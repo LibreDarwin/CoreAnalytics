@@ -1,0 +1,8 @@
+// Copyright (C) 2026, LibreDarwin
+// SPDX-License-Identifier: BSD-3-Clause
+// Clang view of the framework's own C interface, imported by
+// QueryValues.swift as its underlying module (getObjectForKey).
+module CoreAnalytics {
+	header "../../include/CoreAnalytics/CoreAnalytics.h"
+	export *
+}

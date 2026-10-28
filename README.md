@@ -3,17 +3,19 @@
 Clean-room reimplementation of Apple's private `CoreAnalytics.framework`:
 the client side of the `com.apple.analyticsd` telemetry service.
 
-Implemented so far (37 exported symbols, see
+Implemented so far (38 exported symbols, see
 `src/CoreAnalytics/CoreAnalytics.exp`):
 
 - the public C API: `Analytics*` / `analytics_*` event submission and
   management calls plus the legacy `setObjectForKey` / `getObjectForKey` /
   `ad_addScalarForKey` / `report_locale_prefs_to_analyticsd` helpers;
 - the `AnalyticsEventObserver` and `AnalyticsConfigurationObserver`
-  classes.
+  classes;
+- the Swift `AnalyticsQueryValuesFor(arguments:)` (built with `swiftc`
+  as module `CoreAnalytics` so its mangled name matches).
 
-Not yet: the C++ `CoreAnalytics::Client` exports, `analytics_tool_*` and
-the Swift `QueryValuesFor`.
+Not yet: the C++ `CoreAnalytics::Client` exports and `analytics_tool_*`
+(nothing shipped in macOS imports them).
 
 ## Build
 

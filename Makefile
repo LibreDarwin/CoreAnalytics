@@ -18,6 +18,7 @@
 CONFIG ?= release
 SDK    ?= /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
 CC     := /Users/sunneva/xnuports-root/devel/xcode-tools/build/release/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
+SWIFTC := /Users/sunneva/xnuports-root/devel/xcode-tools/build/release/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc
 
 -include make/$(CONFIG).mk
 
@@ -32,7 +33,8 @@ FW_VER    := $(FRAMEWORK)/Versions/A
 INSTALL_NAME := /System/Library/PrivateFrameworks/CoreAnalytics.framework/Versions/A/CoreAnalytics
 
 HDRS := include/CoreAnalytics/CoreAnalytics.h $(FW_SRC)/ca_internal.h
-OBJS := $(OBJDIR)/api.o $(OBJDIR)/client.o $(OBJDIR)/json.o $(OBJDIR)/observers.o
+OBJS := $(OBJDIR)/api.o $(OBJDIR)/client.o $(OBJDIR)/json.o $(OBJDIR)/observers.o \
+	$(OBJDIR)/QueryValues.o
 
 all: $(FRAMEWORK)/CoreAnalytics
 
@@ -41,7 +43,8 @@ $(FRAMEWORK)/CoreAnalytics: $(OBJS) $(FW_SRC)/CoreAnalytics.exp $(FW_SRC)/Info.p
 	$(CC) $(MFLAGS) -dynamiclib -install_name $(INSTALL_NAME) \
 	    -compatibility_version 1 -current_version 1 \
 	    -exported_symbols_list $(FW_SRC)/CoreAnalytics.exp \
-	    -o $(FW_VER)/CoreAnalytics $(OBJS) -framework Foundation -framework CoreFoundation -lc++
+	    -o $(FW_VER)/CoreAnalytics $(OBJS) -framework Foundation -framework CoreFoundation -lc++ \
+	    -L"$(SDK)/usr/lib/swift"
 	cp include/CoreAnalytics/CoreAnalytics.h $(FW_VER)/Headers/CoreAnalytics.h
 	cp $(FW_SRC)/Info.plist $(FW_VER)/Resources/Info.plist
 	ln -sfh A $(FRAMEWORK)/Versions/Current
@@ -65,6 +68,16 @@ $(OBJDIR)/json.o: $(FW_SRC)/json.m $(HDRS)
 $(OBJDIR)/observers.o: $(FW_SRC)/observers.mm $(HDRS)
 	@mkdir -p $(OBJDIR)
 	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/observers.mm
+
+# The Swift export.  Its module is named CoreAnalytics (the symbol's
+# mangling depends on it) and imports the framework's C header as its
+# underlying Clang module; the Swift runtime libraries are autolinked.
+$(OBJDIR)/QueryValues.o: $(FW_SRC)/QueryValues.swift $(FW_SRC)/CoreAnalytics.modulemap \
+	include/CoreAnalytics/CoreAnalytics.h
+	@mkdir -p $(OBJDIR)
+	$(SWIFTC) -sdk "$(SDK)" $(SWIFTOPT) -parse-as-library -module-name CoreAnalytics \
+	    -import-underlying-module -Xcc -fmodule-map-file=$(FW_SRC)/CoreAnalytics.modulemap \
+	    -Xcc -Iinclude -c -o $@ $(FW_SRC)/QueryValues.swift
 
 # The JSON writer is internal, so its check links json.o directly.
 JSON_CHECK := $(BUILD_DIR)/json_check

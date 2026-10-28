@@ -2,3 +2,4 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Flags for a release build.
 OPT := -O2
+SWIFTOPT := -O

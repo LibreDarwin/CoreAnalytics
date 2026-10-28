@@ -2,3 +2,4 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Flags for a debug build.
 OPT := -O0 -g -DDEBUG
+SWIFTOPT := -Onone -g

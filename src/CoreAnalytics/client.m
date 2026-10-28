@@ -667,7 +667,7 @@ ca_client_mgmt(const char *command, xpc_object_t args)
 
 	if (os_log_type_enabled(ca_log_mgmt, OS_LOG_TYPE_DEBUG)) {
 		char *d = describe(msg);
-		os_log_debug(ca_log_mgmt, "Sending management command %s: %s", command, d);
+		os_log_debug(ca_log_mgmt, "%s %s", command, d);
 		free(d);
 	}
 	xpc_dictionary_set_string(msg, "command", command);
