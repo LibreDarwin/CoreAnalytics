@@ -4,7 +4,7 @@
 #
 #   make                 # build CoreAnalytics.framework for CONFIG (default release)
 #   make CONFIG=debug    # debug build
-#   make test            # JSON writer checks + export-list parity with Apple's
+#   make test            # JSON checks, export parity, payload parity with Apple's
 #   make clean
 #
 # The framework keeps Apple's install name, so a binary linked against it
@@ -75,13 +75,26 @@ $(JSON_CHECK): tests/json_check.m $(OBJDIR)/json.o $(HDRS)
 json-check: $(JSON_CHECK)
 	$(JSON_CHECK)
 
+# Event JSON must match Apple's byte for byte; see tests/payload-parity.sh.
+PAYLOAD_GEN := $(BUILD_DIR)/payload_gen
+CAPTURE_LIB := $(BUILD_DIR)/capture_send.dylib
+
+$(PAYLOAD_GEN): tests/payload_gen.m include/CoreAnalytics/CoreAnalytics.h $(FRAMEWORK)/CoreAnalytics
+	$(CC) $(MFLAGS) -F$(BUILD_DIR) -o $@ tests/payload_gen.m -framework CoreAnalytics -framework Foundation
+
+$(CAPTURE_LIB): tests/capture_send.c
+	$(CC) $(OPT) -fblocks -isysroot "$(SDK)" -dynamiclib -o $@ tests/capture_send.c
+
+payload-parity: $(PAYLOAD_GEN) $(CAPTURE_LIB)
+	GEN="$(PAYLOAD_GEN)" CAP="$(CAPTURE_LIB)" FWDIR="$(BUILD_DIR)" bash tests/payload-parity.sh
+
 # Every exported symbol of our framework must be one of Apple's C exports.
 exports-check: all
 	FW="build/$(CONFIG)/CoreAnalytics.framework/CoreAnalytics" bash tests/exports.sh
 
-test: json-check exports-check
+test: json-check exports-check payload-parity
 
 clean:
 	rm -rf build
 
-.PHONY: all json-check exports-check test clean
+.PHONY: all json-check exports-check payload-parity test clean

@@ -72,6 +72,15 @@ main(void)
 		    "0.0001,1.5e-05,-0.0,0.0,-2.5e-300,1.7976931348623157e+308]");
 		expect_ns(@[ @0.1f ], "[0.10000000149011612]");
 
+		/* Grisu2 is not always shortest; these are the digits Apple's
+		 * framework sends (captured from its outgoing messages), one
+		 * longer than the shortest round-trip form. */
+		expect_ns(@[ @7.7132213375453208e+140, @4.2403506834040578e-165,
+			     @33833667468557792.0, @(-2.6515429685090411e+241),
+			     @(-3.5077677739450782e-295), @5e-324 ],
+		    "[7.713221337545321e+140,4.2403506834040578e-165,3.3833667468557792e+16,"
+		    "-2.6515429685090411e+241,-3.5077677739450782e-295,5e-324]");
+
 		/* data -> lowercase hex string */
 		expect_ns(@{ @"d": [NSData dataWithBytes:"\x00\xab\xff" length:3] },
 		    "{\"d\":\"00abff\"}");

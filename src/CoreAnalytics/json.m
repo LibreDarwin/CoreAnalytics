@@ -167,15 +167,239 @@ put_uint(ca_buf *b, unsigned long long v)
 	buf_puts(b, t);
 }
 
-/* nlohmann::detail::to_chars: shortest round-trip digits laid out by
- * format_buffer() with min_exp -4 and max_exp 15.  Non-finite values dump
- * as null. */
+/* --- Grisu2 ------------------------------------------------------------
+ *
+ * Shortest-ish decimal digits for a double, after F. Loitsch, "Printing
+ * Floating-Point Numbers Quickly and Accurately with Integers" (PLDI 2010),
+ * the algorithm nlohmann::json's dump() uses.  All arithmetic is on
+ * 64-bit "diy" floats (f * 2^e); a cached power of ten scales the value
+ * so its exponent lands in [-60, -32], digits are generated from the
+ * scaled upper boundary, and the last digit is nudged towards the exact
+ * value.  The output always reads back as the same double and is the
+ * shortest such string in nearly all cases. */
+
+typedef struct {
+	uint64_t f;
+	int e;
+} diyfp;
+
+/* 10^k = f * 2^e with f normalized (top bit set) and rounded to nearest,
+ * for k = -348, -340, ..., 340.  Generated from exact integer arithmetic. */
+static const struct {
+	uint64_t f;
+	int e;
+	int k;
+} cached_powers[] = {
+	{ 0xFA8FD5A0081C0288ULL, -1220, -348 },
+	{ 0xBAAEE17FA23EBF76ULL, -1193, -340 },
+	{ 0x8B16FB203055AC76ULL, -1166, -332 },
+	{ 0xCF42894A5DCE35EAULL, -1140, -324 },
+	{ 0x9A6BB0AA55653B2DULL, -1113, -316 },
+	{ 0xE61ACF033D1A45DFULL, -1087, -308 },
+	{ 0xAB70FE17C79AC6CAULL, -1060, -300 },
+	{ 0xFF77B1FCBEBCDC4FULL, -1034, -292 },
+	{ 0xBE5691EF416BD60CULL, -1007, -284 },
+	{ 0x8DD01FAD907FFC3CULL,  -980, -276 },
+	{ 0xD3515C2831559A83ULL,  -954, -268 },
+	{ 0x9D71AC8FADA6C9B5ULL,  -927, -260 },
+	{ 0xEA9C227723EE8BCBULL,  -901, -252 },
+	{ 0xAECC49914078536DULL,  -874, -244 },
+	{ 0x823C12795DB6CE57ULL,  -847, -236 },
+	{ 0xC21094364DFB5637ULL,  -821, -228 },
+	{ 0x9096EA6F3848984FULL,  -794, -220 },
+	{ 0xD77485CB25823AC7ULL,  -768, -212 },
+	{ 0xA086CFCD97BF97F4ULL,  -741, -204 },
+	{ 0xEF340A98172AACE5ULL,  -715, -196 },
+	{ 0xB23867FB2A35B28EULL,  -688, -188 },
+	{ 0x84C8D4DFD2C63F3BULL,  -661, -180 },
+	{ 0xC5DD44271AD3CDBAULL,  -635, -172 },
+	{ 0x936B9FCEBB25C996ULL,  -608, -164 },
+	{ 0xDBAC6C247D62A584ULL,  -582, -156 },
+	{ 0xA3AB66580D5FDAF6ULL,  -555, -148 },
+	{ 0xF3E2F893DEC3F126ULL,  -529, -140 },
+	{ 0xB5B5ADA8AAFF80B8ULL,  -502, -132 },
+	{ 0x87625F056C7C4A8BULL,  -475, -124 },
+	{ 0xC9BCFF6034C13053ULL,  -449, -116 },
+	{ 0x964E858C91BA2655ULL,  -422, -108 },
+	{ 0xDFF9772470297EBDULL,  -396, -100 },
+	{ 0xA6DFBD9FB8E5B88FULL,  -369,  -92 },
+	{ 0xF8A95FCF88747D94ULL,  -343,  -84 },
+	{ 0xB94470938FA89BCFULL,  -316,  -76 },
+	{ 0x8A08F0F8BF0F156BULL,  -289,  -68 },
+	{ 0xCDB02555653131B6ULL,  -263,  -60 },
+	{ 0x993FE2C6D07B7FACULL,  -236,  -52 },
+	{ 0xE45C10C42A2B3B06ULL,  -210,  -44 },
+	{ 0xAA242499697392D3ULL,  -183,  -36 },
+	{ 0xFD87B5F28300CA0EULL,  -157,  -28 },
+	{ 0xBCE5086492111AEBULL,  -130,  -20 },
+	{ 0x8CBCCC096F5088CCULL,  -103,  -12 },
+	{ 0xD1B71758E219652CULL,   -77,   -4 },
+	{ 0x9C40000000000000ULL,   -50,    4 },
+	{ 0xE8D4A51000000000ULL,   -24,   12 },
+	{ 0xAD78EBC5AC620000ULL,     3,   20 },
+	{ 0x813F3978F8940984ULL,    30,   28 },
+	{ 0xC097CE7BC90715B3ULL,    56,   36 },
+	{ 0x8F7E32CE7BEA5C70ULL,    83,   44 },
+	{ 0xD5D238A4ABE98068ULL,   109,   52 },
+	{ 0x9F4F2726179A2245ULL,   136,   60 },
+	{ 0xED63A231D4C4FB27ULL,   162,   68 },
+	{ 0xB0DE65388CC8ADA8ULL,   189,   76 },
+	{ 0x83C7088E1AAB65DBULL,   216,   84 },
+	{ 0xC45D1DF942711D9AULL,   242,   92 },
+	{ 0x924D692CA61BE758ULL,   269,  100 },
+	{ 0xDA01EE641A708DEAULL,   295,  108 },
+	{ 0xA26DA3999AEF774AULL,   322,  116 },
+	{ 0xF209787BB47D6B85ULL,   348,  124 },
+	{ 0xB454E4A179DD1877ULL,   375,  132 },
+	{ 0x865B86925B9BC5C2ULL,   402,  140 },
+	{ 0xC83553C5C8965D3DULL,   428,  148 },
+	{ 0x952AB45CFA97A0B3ULL,   455,  156 },
+	{ 0xDE469FBD99A05FE3ULL,   481,  164 },
+	{ 0xA59BC234DB398C25ULL,   508,  172 },
+	{ 0xF6C69A72A3989F5CULL,   534,  180 },
+	{ 0xB7DCBF5354E9BECEULL,   561,  188 },
+	{ 0x88FCF317F22241E2ULL,   588,  196 },
+	{ 0xCC20CE9BD35C78A5ULL,   614,  204 },
+	{ 0x98165AF37B2153DFULL,   641,  212 },
+	{ 0xE2A0B5DC971F303AULL,   667,  220 },
+	{ 0xA8D9D1535CE3B396ULL,   694,  228 },
+	{ 0xFB9B7CD9A4A7443CULL,   720,  236 },
+	{ 0xBB764C4CA7A44410ULL,   747,  244 },
+	{ 0x8BAB8EEFB6409C1AULL,   774,  252 },
+	{ 0xD01FEF10A657842CULL,   800,  260 },
+	{ 0x9B10A4E5E9913129ULL,   827,  268 },
+	{ 0xE7109BFBA19C0C9DULL,   853,  276 },
+	{ 0xAC2820D9623BF429ULL,   880,  284 },
+	{ 0x80444B5E7AA7CF85ULL,   907,  292 },
+	{ 0xBF21E44003ACDD2DULL,   933,  300 },
+	{ 0x8E679C2F5E44FF8FULL,   960,  308 },
+	{ 0xD433179D9C8CB841ULL,   986,  316 },
+	{ 0x9E19DB92B4E31BA9ULL,  1013,  324 },
+	{ 0xEB96BF6EBADF77D9ULL,  1039,  332 },
+	{ 0xAF87023B9BF0EE6BULL,  1066,  340 },
+};
+
+#define GRISU_ALPHA (-60)
+#define GRISU_GAMMA (-32)
+
+static diyfp
+diy_normalize(diyfp x)
+{
+	while ((x.f >> 63) == 0) {
+		x.f <<= 1;
+		x.e--;
+	}
+	return x;
+}
+
+/* Product rounded to 64 bits. */
+static diyfp
+diy_mul(diyfp x, diyfp y)
+{
+	unsigned __int128 p = (unsigned __int128)x.f * y.f;
+	p += (unsigned __int128)1 << 63;
+	return (diyfp){ (uint64_t)(p >> 64), x.e + y.e + 64 };
+}
+
+/* Step the last digit down while that brings it closer to the exact
+ * value and stays inside the boundaries. */
+static void
+grisu_round(char *dig, int len, uint64_t dist, uint64_t delta, uint64_t rest,
+    uint64_t ten_k)
+{
+	while (rest < dist && delta - rest >= ten_k &&
+	    (rest + ten_k < dist || dist - rest > rest + ten_k - dist)) {
+		dig[len - 1]--;
+		rest += ten_k;
+	}
+}
+
+/* Digits of v (> 0, finite) into dig; returns the count and sets *dexp so
+ * that v ~= digits * 10^*dexp. */
+static int
+grisu2(double v, char *dig, int *dexp)
+{
+	uint64_t bits;
+	memcpy(&bits, &v, sizeof bits);
+	uint64_t frac = bits & ((1ULL << 52) - 1);
+	int biased = (int)(bits >> 52) & 0x7FF;
+
+	diyfp w = biased == 0 ? (diyfp){ frac, 1 - 1075 }
+			      : (diyfp){ frac | (1ULL << 52), biased - 1075 };
+	bool closer = frac == 0 && biased > 1;	/* lower gap is half as wide */
+	diyfp mp = diy_normalize((diyfp){ (w.f << 1) + 1, w.e - 1 });
+	diyfp mm = closer ? (diyfp){ (w.f << 2) - 1, w.e - 2 }
+			  : (diyfp){ (w.f << 1) - 1, w.e - 1 };
+	mm.f <<= mm.e - mp.e;
+	mm.e = mp.e;
+	w = diy_normalize(w);
+
+	/* First cached power that lifts the exponent to at least alpha. */
+	size_t i = 0;
+	while (cached_powers[i].e + mp.e + 64 < GRISU_ALPHA)
+		i++;
+	diyfp c = { cached_powers[i].f, cached_powers[i].e };
+	int ck = cached_powers[i].k;	/* W = v * 10^ck */
+
+	diyfp W = diy_mul(w, c);
+	diyfp Mp = diy_mul(mp, c);
+	diyfp Mm = diy_mul(mm, c);
+	Mm.f++;			/* stay strictly inside the boundaries */
+	Mp.f--;
+
+	uint64_t delta = Mp.f - Mm.f;
+	uint64_t dist = Mp.f - W.f;
+	int shift = -Mp.e;
+	uint64_t one = 1ULL << shift;
+	uint32_t p1 = (uint32_t)(Mp.f >> shift);
+	uint64_t p2 = Mp.f & (one - 1);
+
+	/* Integral part: digits of p1, highest power of ten first. */
+	uint32_t pow10 = 1;
+	int kappa = 1;
+	while (kappa < 10 && p1 >= pow10 * 10) {
+		pow10 *= 10;
+		kappa++;
+	}
+	int len = 0;
+	while (kappa > 0) {
+		dig[len++] = (char)('0' + p1 / pow10);
+		p1 %= pow10;
+		kappa--;
+		uint64_t rest = ((uint64_t)p1 << shift) + p2;
+		if (rest <= delta) {
+			*dexp = kappa - ck;
+			grisu_round(dig, len, dist, delta, rest, (uint64_t)pow10 << shift);
+			return len;
+		}
+		pow10 /= 10;
+	}
+
+	/* Fractional part. */
+	int m = 0;
+	for (;;) {
+		p2 *= 10;
+		delta *= 10;
+		dist *= 10;
+		dig[len++] = (char)('0' + (p2 >> shift));
+		p2 &= one - 1;
+		m++;
+		if (p2 <= delta) {
+			*dexp = -m - ck;
+			grisu_round(dig, len, dist, delta, p2, one);
+			return len;
+		}
+	}
+}
+
+/* nlohmann::detail::to_chars: Grisu2 digits laid out by format_buffer()
+ * with min_exp -4 and max_exp 15.  Non-finite values dump as null. */
 static void
 put_double(ca_buf *b, double v)
 {
 	char out[64], *p = out;
-	char t[40], dig[20];
-	int k = 0, e10;
+	char dig[20];
+	int k, dexp;
 
 	if (!isfinite(v)) {
 		buf_puts(b, "null");
@@ -190,22 +414,9 @@ put_double(ca_buf *b, double v)
 		buf_puts(b, out);
 		return;
 	}
-	/* ponytail: shortest-digits search via printf/strtod instead of
-	 * Grisu2; the two agree except for rare inputs where Grisu2 is not
-	 * shortest.  Port Grisu2 if byte parity on those ever matters. */
-	for (int prec = 1; prec <= 17; prec++) {
-		snprintf(t, sizeof t, "%.*e", prec - 1, v);
-		if (strtod(t, NULL) == v)
-			break;
-	}
-	for (char *q = t; *q != 'e'; q++)
-		if (*q != '.')
-			dig[k++] = *q;
-	e10 = atoi(strchr(t, 'e') + 1);
-	while (k > 1 && dig[k - 1] == '0')
-		k--;
+	k = grisu2(v, dig, &dexp);
 
-	int n = e10 + 1;	/* value = 0.DIGITS * 10^n */
+	int n = k + dexp;	/* value = 0.DIGITS * 10^n */
 	if (k <= n && n <= 15) {
 		memcpy(p, dig, k);
 		memset(p + k, '0', n - k);

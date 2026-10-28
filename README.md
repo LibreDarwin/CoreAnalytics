@@ -19,7 +19,7 @@ the Swift `QueryValuesFor`.
 
     make                  # build/release/CoreAnalytics.framework
     make CONFIG=debug
-    make test             # JSON writer checks + export parity with Apple's
+    make test             # JSON checks, export parity, payload parity with Apple's
     xcodebuild -project CoreAnalytics.xcodeproj -target exports-check
 
 The framework keeps Apple's install name, so a binary built against either
@@ -31,7 +31,9 @@ copy loads Apple's by default and ours with
 
 Events go to analyticsd as `{command: "send", event, json, timestamp (µs
 since epoch), priority, format}`; the payload is compact JSON with sorted
-keys (nlohmann::json's `dump()`).  analyticsd may push a shared-memory
+keys, laid out like nlohmann::json's `dump()` (numbers via a clean-room
+Grisu2).  `make payload-parity` checks this byte for byte against Apple's
+framework by capturing outgoing messages in-process (nothing is sent).  analyticsd may push a shared-memory
 configuration (`notification: "configuration-change"`, magic `0xF09116A8`
 v1) listing the events in use, followed by a JSON array of
 `{"kind", "configuration"}` entries for configuration observers; unused
