@@ -107,9 +107,9 @@ exports-check: all
 
 test: json-check exports-check payload-parity
 
-$(OBJDIR)/cpp_stubs.o: $(FW_SRC)/cpp_stubs.cpp
+$(OBJDIR)/cpp_stubs.o: $(FW_SRC)/cpp_stubs.mm
 	@mkdir -p $(OBJDIR)
-	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/cpp_stubs.cpp
+	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/cpp_stubs.mm
 
 clean:
 	rm -rf build

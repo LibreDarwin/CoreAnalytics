@@ -60,6 +60,9 @@ void ca_buf_free(ca_buf *b);
 
 bool ca_client_is_event_used(const char *name, size_t len);
 
+/* True once a framework configuration has been received. */
+bool ca_client_has_config(void);
+
 /* Send one event.  `render` writes the payload JSON and is only called
  * once the connection is up; a failed render or a payload that is not a
  * JSON object drops the event (returns false). */

@@ -717,3 +717,13 @@ ca_client_register_error_handler(void (^handler)(const char *))
 		C.error_handler = handler;
 	});
 }
+
+bool
+ca_client_has_config(void)
+{
+	struct ca_config *c = config_load();
+	bool has = (c != NULL);
+	if (c != NULL)
+		config_release(c);
+	return has;
+}

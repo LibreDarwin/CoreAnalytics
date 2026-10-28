@@ -1,11 +1,34 @@
-// C++ Client milestone: exported symbol stubs.
+// C++ Client milestone.
 // Copyright (C) 2026, LibreDarwin
 // SPDX-License-Identifier: BSD-3-Clause
 
-#define STUB(sym) extern "C" void sym(void) __asm__(#sym); void sym(void) {}
+#include "ca_internal.h"
+#include <string_view>
 
-extern "C" void __Z10CASPIEnterv(void) __asm__("__Z10CASPIEnterv");
-void __Z10CASPIEnterv(void) {}
+namespace CoreAnalytics {
+class EventObserver { public: virtual ~EventObserver(); };
+class ConfigurationObserver { public: virtual ~ConfigurationObserver(); };
+class Client {
+public:
+    Client();
+    static Client &get();
+    bool hasConfig() const;
+    bool isEventUsed(std::string_view name) const;
+    void allowAllEvents();
+};
+}
+
+CoreAnalytics::EventObserver::~EventObserver() {}
+CoreAnalytics::ConfigurationObserver::~ConfigurationObserver() {}
+CoreAnalytics::Client::Client() {}
+CoreAnalytics::Client &CoreAnalytics::Client::get() { static CoreAnalytics::Client instance; return instance; }
+bool CoreAnalytics::Client::hasConfig() const { return ca_client_has_config(); }
+bool CoreAnalytics::Client::isEventUsed(std::string_view name) const { return ca_client_is_event_used(name.data(), name.size()); }
+void CoreAnalytics::Client::allowAllEvents() {}
+
+void CASPIEnter(void) { ca_enter(); }
+
+bool analytics_tool_has_config(void) { return ca_client_has_config(); }
 
 extern "C" void __Z19analytics_tool_savev(void) __asm__("__Z19analytics_tool_savev");
 void __Z19analytics_tool_savev(void) {}
@@ -18,9 +41,6 @@ void __Z23analytics_tool_log_dumpNSt3__18optionalINS_12basic_stringIcNS_11char_t
 
 extern "C" void __Z23analytics_tool_rolloverNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEEb(void) __asm__("__Z23analytics_tool_rolloverNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEEb");
 void __Z23analytics_tool_rolloverNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEEb(void) {}
-
-extern "C" void __Z25analytics_tool_has_configv(void) __asm__("__Z25analytics_tool_has_configv");
-void __Z25analytics_tool_has_configv(void) {}
 
 extern "C" void __Z25analytics_tool_query_listv(void) __asm__("__Z25analytics_tool_query_listv");
 void __Z25analytics_tool_query_listv(void) {}
@@ -76,26 +96,6 @@ void __Z38analytics_tool_config_set_reboot_clearb(void) {}
 extern "C" void __Z40analytics_tool_config_set_tasking_ndjsonRKNSt3__14pairIN10applesauce3xpc6objectEmEE(void) __asm__("__Z40analytics_tool_config_set_tasking_ndjsonRKNSt3__14pairIN10applesauce3xpc6objectEmEE");
 void __Z40analytics_tool_config_set_tasking_ndjsonRKNSt3__14pairIN10applesauce3xpc6objectEmEE(void) {}
 
-extern "C" void __ZN13CoreAnalytics13EventObserverD0Ev(void) __asm__("__ZN13CoreAnalytics13EventObserverD0Ev");
-void __ZN13CoreAnalytics13EventObserverD0Ev(void) {}
-
-extern "C" void __ZN13CoreAnalytics13EventObserverD1Ev(void) __asm__("__ZN13CoreAnalytics13EventObserverD1Ev");
-void __ZN13CoreAnalytics13EventObserverD1Ev(void) {}
-
-extern "C" void __ZN13CoreAnalytics13EventObserverD2Ev(void) __asm__("__ZN13CoreAnalytics13EventObserverD2Ev");
-void __ZN13CoreAnalytics13EventObserverD2Ev(void) {}
-
-extern "C" void __ZN13CoreAnalytics21ConfigurationObserverD0Ev(void) __asm__("__ZN13CoreAnalytics21ConfigurationObserverD0Ev");
-void __ZN13CoreAnalytics21ConfigurationObserverD0Ev(void) {}
-
-extern "C" void __ZN13CoreAnalytics21ConfigurationObserverD1Ev(void) __asm__("__ZN13CoreAnalytics21ConfigurationObserverD1Ev");
-void __ZN13CoreAnalytics21ConfigurationObserverD1Ev(void) {}
-
-extern "C" void __ZN13CoreAnalytics21ConfigurationObserverD2Ev(void) __asm__("__ZN13CoreAnalytics21ConfigurationObserverD2Ev");
-void __ZN13CoreAnalytics21ConfigurationObserverD2Ev(void) {}
-
-extern "C" void __ZN13CoreAnalytics6Client14allowAllEventsEv(void) __asm__("__ZN13CoreAnalytics6Client14allowAllEventsEv");
-void __ZN13CoreAnalytics6Client14allowAllEventsEv(void) {}
 
 extern "C" void __ZN13CoreAnalytics6Client14initConnectionEv(void) __asm__("__ZN13CoreAnalytics6Client14initConnectionEv");
 void __ZN13CoreAnalytics6Client14initConnectionEv(void) {}
@@ -121,9 +121,6 @@ void __ZN13CoreAnalytics6Client20retryXpcMessage_syncERKN10applesauce3xpc4dictE1
 extern "C" void __ZN13CoreAnalytics6Client21cancelConnection_syncEv(void) __asm__("__ZN13CoreAnalytics6Client21cancelConnection_syncEv");
 void __ZN13CoreAnalytics6Client21cancelConnection_syncEv(void) {}
 
-extern "C" void __ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE(void) __asm__("__ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE");
-void __ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE(void) {}
-
 extern "C" void __ZN13CoreAnalytics6Client22acquireSendTransactionEv(void) __asm__("__ZN13CoreAnalytics6Client22acquireSendTransactionEv");
 void __ZN13CoreAnalytics6Client22acquireSendTransactionEv(void) {}
 
@@ -142,51 +139,21 @@ void __ZN13CoreAnalytics6Client26handleSinkMessageEmit_syncERKN10applesauce3xpc4
 extern "C" void __ZN13CoreAnalytics6Client26retryXpcMessageHelper_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybhy(void) __asm__("__ZN13CoreAnalytics6Client26retryXpcMessageHelper_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybhy");
 void __ZN13CoreAnalytics6Client26retryXpcMessageHelper_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybhy(void) {}
 
-extern "C" void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE(void) __asm__("__ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE");
-void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE(void) {}
-
 extern "C" void __ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE(void) __asm__("__ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE");
 void __ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE(void) {}
 
 extern "C" void __ZN13CoreAnalytics6Client30sendExitBarrierWithTimeoutSyncEj(void) __asm__("__ZN13CoreAnalytics6Client30sendExitBarrierWithTimeoutSyncEj");
 void __ZN13CoreAnalytics6Client30sendExitBarrierWithTimeoutSyncEj(void) {}
 
-extern "C" void __ZN13CoreAnalytics6Client3getEv(void) __asm__("__ZN13CoreAnalytics6Client3getEv");
-void __ZN13CoreAnalytics6Client3getEv(void) {}
-
 extern "C" void __ZN13CoreAnalytics6Client4initEv(void) __asm__("__ZN13CoreAnalytics6Client4initEv");
 void __ZN13CoreAnalytics6Client4initEv(void) {}
-
-extern "C" void __ZN13CoreAnalytics6ClientC1Ev(void) __asm__("__ZN13CoreAnalytics6ClientC1Ev");
-void __ZN13CoreAnalytics6ClientC1Ev(void) {}
-
-extern "C" void __ZN13CoreAnalytics6ClientC2Ev(void) __asm__("__ZN13CoreAnalytics6ClientC2Ev");
-void __ZN13CoreAnalytics6ClientC2Ev(void) {}
-
-extern "C" void __ZNK13CoreAnalytics6Client11isEventUsedENSt3__117basic_string_viewIcNS1_11char_traitsIcEEEE(void) __asm__("__ZNK13CoreAnalytics6Client11isEventUsedENSt3__117basic_string_viewIcNS1_11char_traitsIcEEEE");
-void __ZNK13CoreAnalytics6Client11isEventUsedENSt3__117basic_string_viewIcNS1_11char_traitsIcEEEE(void) {}
 
 extern "C" void __ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE(void) __asm__("__ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE");
 void __ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE(void) {}
 
-extern "C" void __ZNK13CoreAnalytics6Client9hasConfigEv(void) __asm__("__ZNK13CoreAnalytics6Client9hasConfigEv");
-void __ZNK13CoreAnalytics6Client9hasConfigEv(void) {}
 
-extern "C" void __ZTIN13CoreAnalytics13EventObserverE(void) __asm__("__ZTIN13CoreAnalytics13EventObserverE");
-void __ZTIN13CoreAnalytics13EventObserverE(void) {}
+extern "C" void __ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE(void) __asm__("__ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE");
+void __ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE(void) {}
 
-extern "C" void __ZTIN13CoreAnalytics21ConfigurationObserverE(void) __asm__("__ZTIN13CoreAnalytics21ConfigurationObserverE");
-void __ZTIN13CoreAnalytics21ConfigurationObserverE(void) {}
-
-extern "C" void __ZTSN13CoreAnalytics13EventObserverE(void) __asm__("__ZTSN13CoreAnalytics13EventObserverE");
-void __ZTSN13CoreAnalytics13EventObserverE(void) {}
-
-extern "C" void __ZTSN13CoreAnalytics21ConfigurationObserverE(void) __asm__("__ZTSN13CoreAnalytics21ConfigurationObserverE");
-void __ZTSN13CoreAnalytics21ConfigurationObserverE(void) {}
-
-extern "C" void __ZTVN13CoreAnalytics13EventObserverE(void) __asm__("__ZTVN13CoreAnalytics13EventObserverE");
-void __ZTVN13CoreAnalytics13EventObserverE(void) {}
-
-extern "C" void __ZTVN13CoreAnalytics21ConfigurationObserverE(void) __asm__("__ZTVN13CoreAnalytics21ConfigurationObserverE");
-void __ZTVN13CoreAnalytics21ConfigurationObserverE(void) {}
-
+extern "C" void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE(void) __asm__("__ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE");
+void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE(void) {}
