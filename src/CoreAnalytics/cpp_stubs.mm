@@ -160,6 +160,22 @@ void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrI
 #include <string>
 std::string analytics_tool_config_list() {
     xpc_object_t r = ca_client_mgmt("config-list", nullptr);
-    (void)r;
-    throw std::runtime_error("config-list failed");
+    if (r == NULL || xpc_get_type(r) != XPC_TYPE_DICTIONARY) {
+        if (r != NULL && xpc_get_type(r) != XPC_TYPE_DICTIONARY)
+            return "unknown";
+        throw std::runtime_error("config-list failed");
+    }
+    const char *err = xpc_dictionary_get_string(r, "error");
+    if (err != NULL)
+        throw std::runtime_error("config-list failed");
+    const char *cl = xpc_dictionary_get_string(r, "config-list");
+    if (cl != NULL)
+        return std::string(cl);
+    ca_buf b = {0};
+    if (ca_json_from_xpc(r, &b, nullptr)) {
+        std::string out(b.ptr ? b.ptr : "");
+        ca_buf_free(&b);
+        return out;
+    }
+    return "unknown";
 }
