@@ -1,0 +1,192 @@
+// C++ Client milestone: exported symbol stubs.
+// Copyright (C) 2026, LibreDarwin
+// SPDX-License-Identifier: BSD-3-Clause
+
+#define STUB(sym) extern "C" void sym(void) __asm__(#sym); void sym(void) {}
+
+extern "C" void __Z10CASPIEnterv(void) __asm__("__Z10CASPIEnterv");
+void __Z10CASPIEnterv(void) {}
+
+extern "C" void __Z19analytics_tool_savev(void) __asm__("__Z19analytics_tool_savev");
+void __Z19analytics_tool_savev(void) {}
+
+extern "C" void __Z21analytics_tool_commitv(void) __asm__("__Z21analytics_tool_commitv");
+void __Z21analytics_tool_commitv(void) {}
+
+extern "C" void __Z23analytics_tool_log_dumpNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE(void) __asm__("__Z23analytics_tool_log_dumpNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE");
+void __Z23analytics_tool_log_dumpNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE(void) {}
+
+extern "C" void __Z23analytics_tool_rolloverNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEEb(void) __asm__("__Z23analytics_tool_rolloverNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEEb");
+void __Z23analytics_tool_rolloverNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEEb(void) {}
+
+extern "C" void __Z25analytics_tool_has_configv(void) __asm__("__Z25analytics_tool_has_configv");
+void __Z25analytics_tool_has_configv(void) {}
+
+extern "C" void __Z25analytics_tool_query_listv(void) __asm__("__Z25analytics_tool_query_listv");
+void __Z25analytics_tool_query_listv(void) {}
+
+extern "C" void __Z26analytics_tool_config_dumpv(void) __asm__("__Z26analytics_tool_config_dumpv");
+void __Z26analytics_tool_config_dumpv(void) {}
+
+extern "C" void __Z26analytics_tool_config_infov(void) __asm__("__Z26analytics_tool_config_infov");
+void __Z26analytics_tool_config_infov(void) {}
+
+extern "C" void __Z26analytics_tool_config_listv(void) __asm__("__Z26analytics_tool_config_listv");
+void __Z26analytics_tool_config_listv(void) {}
+
+extern "C" void __Z26analytics_tool_query_clearNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE(void) __asm__("__Z26analytics_tool_query_clearNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE");
+void __Z26analytics_tool_query_clearNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE(void) {}
+
+extern "C" void __Z26analytics_tool_query_stateNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEN10applesauce3xpc6objectE(void) __asm__("__Z26analytics_tool_query_stateNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEN10applesauce3xpc6objectE");
+void __Z26analytics_tool_query_stateNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEN10applesauce3xpc6objectE(void) {}
+
+extern "C" void __Z28analytics_tool_config_reloadv(void) __asm__("__Z28analytics_tool_config_reloadv");
+void __Z28analytics_tool_config_reloadv(void) {}
+
+extern "C" void __Z29analytics_tool_app_usage_syncv(void) __asm__("__Z29analytics_tool_app_usage_syncv");
+void __Z29analytics_tool_app_usage_syncv(void) {}
+
+extern "C" void __Z29analytics_tool_get_cache_listv(void) __asm__("__Z29analytics_tool_get_cache_listv");
+void __Z29analytics_tool_get_cache_listv(void) {}
+
+extern "C" void __Z29analytics_tool_transform_infoNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) __asm__("__Z29analytics_tool_transform_infoNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE");
+void __Z29analytics_tool_transform_infoNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) {}
+
+extern "C" void __Z30analytics_tool_transform_evictNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) __asm__("__Z30analytics_tool_transform_evictNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE");
+void __Z30analytics_tool_transform_evictNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) {}
+
+extern "C" void __Z32analytics_tool_transform_persistNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) __asm__("__Z32analytics_tool_transform_persistNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE");
+void __Z32analytics_tool_transform_persistNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) {}
+
+extern "C" void __Z33analytics_tool_config_set_taskingNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) __asm__("__Z33analytics_tool_config_set_taskingNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE");
+void __Z33analytics_tool_config_set_taskingNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) {}
+
+extern "C" void __Z33analytics_tool_insert_query_stateNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEN10applesauce3xpc6objectES8_(void) __asm__("__Z33analytics_tool_insert_query_stateNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEN10applesauce3xpc6objectES8_");
+void __Z33analytics_tool_insert_query_stateNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEN10applesauce3xpc6objectES8_(void) {}
+
+extern "C" void __Z35analytics_tool_log_transform_countsv(void) __asm__("__Z35analytics_tool_log_transform_countsv");
+void __Z35analytics_tool_log_transform_countsv(void) {}
+
+extern "C" void __Z37analytics_tool_is_event_used_check_dbNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) __asm__("__Z37analytics_tool_is_event_used_check_dbNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE");
+void __Z37analytics_tool_is_event_used_check_dbNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE(void) {}
+
+extern "C" void __Z38analytics_tool_config_set_reboot_clearb(void) __asm__("__Z38analytics_tool_config_set_reboot_clearb");
+void __Z38analytics_tool_config_set_reboot_clearb(void) {}
+
+extern "C" void __Z40analytics_tool_config_set_tasking_ndjsonRKNSt3__14pairIN10applesauce3xpc6objectEmEE(void) __asm__("__Z40analytics_tool_config_set_tasking_ndjsonRKNSt3__14pairIN10applesauce3xpc6objectEmEE");
+void __Z40analytics_tool_config_set_tasking_ndjsonRKNSt3__14pairIN10applesauce3xpc6objectEmEE(void) {}
+
+extern "C" void __ZN13CoreAnalytics13EventObserverD0Ev(void) __asm__("__ZN13CoreAnalytics13EventObserverD0Ev");
+void __ZN13CoreAnalytics13EventObserverD0Ev(void) {}
+
+extern "C" void __ZN13CoreAnalytics13EventObserverD1Ev(void) __asm__("__ZN13CoreAnalytics13EventObserverD1Ev");
+void __ZN13CoreAnalytics13EventObserverD1Ev(void) {}
+
+extern "C" void __ZN13CoreAnalytics13EventObserverD2Ev(void) __asm__("__ZN13CoreAnalytics13EventObserverD2Ev");
+void __ZN13CoreAnalytics13EventObserverD2Ev(void) {}
+
+extern "C" void __ZN13CoreAnalytics21ConfigurationObserverD0Ev(void) __asm__("__ZN13CoreAnalytics21ConfigurationObserverD0Ev");
+void __ZN13CoreAnalytics21ConfigurationObserverD0Ev(void) {}
+
+extern "C" void __ZN13CoreAnalytics21ConfigurationObserverD1Ev(void) __asm__("__ZN13CoreAnalytics21ConfigurationObserverD1Ev");
+void __ZN13CoreAnalytics21ConfigurationObserverD1Ev(void) {}
+
+extern "C" void __ZN13CoreAnalytics21ConfigurationObserverD2Ev(void) __asm__("__ZN13CoreAnalytics21ConfigurationObserverD2Ev");
+void __ZN13CoreAnalytics21ConfigurationObserverD2Ev(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client14allowAllEventsEv(void) __asm__("__ZN13CoreAnalytics6Client14allowAllEventsEv");
+void __ZN13CoreAnalytics6Client14allowAllEventsEv(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client14initConnectionEv(void) __asm__("__ZN13CoreAnalytics6Client14initConnectionEv");
+void __ZN13CoreAnalytics6Client14initConnectionEv(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client14sendXpcMessageERKN10applesauce3xpc4dictE18XPCMessagePrioritybb(void) __asm__("__ZN13CoreAnalytics6Client14sendXpcMessageERKN10applesauce3xpc4dictE18XPCMessagePrioritybb");
+void __ZN13CoreAnalytics6Client14sendXpcMessageERKN10applesauce3xpc4dictE18XPCMessagePrioritybb(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client15sendEventAlwaysENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEERKNS1_8functionIFN8nlohmann10basic_jsonINS1_3mapENS1_6vectorES7_bxydS5_NS9_14adl_serializerENSC_IhNS5_IhEEEEEEvEEENS_16SendEventOptionsE(void) __asm__("__ZN13CoreAnalytics6Client15sendEventAlwaysENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEERKNS1_8functionIFN8nlohmann10basic_jsonINS1_3mapENS1_6vectorES7_bxydS5_NS9_14adl_serializerENSC_IhNS5_IhEEEEEEvEEENS_16SendEventOptionsE");
+void __ZN13CoreAnalytics6Client15sendEventAlwaysENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEERKNS1_8functionIFN8nlohmann10basic_jsonINS1_3mapENS1_6vectorES7_bxydS5_NS9_14adl_serializerENSC_IhNS5_IhEEEEEEvEEENS_16SendEventOptionsE(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client17updateDaemonStateEi(void) __asm__("__ZN13CoreAnalytics6Client17updateDaemonStateEi");
+void __ZN13CoreAnalytics6Client17updateDaemonStateEi(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client19sendXpcMessage_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybb(void) __asm__("__ZN13CoreAnalytics6Client19sendXpcMessage_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybb");
+void __ZN13CoreAnalytics6Client19sendXpcMessage_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybb(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client20registerErrorHandlerEONSt3__18functionIFvRKNS1_12basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEEEE(void) __asm__("__ZN13CoreAnalytics6Client20registerErrorHandlerEONSt3__18functionIFvRKNS1_12basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEEEE");
+void __ZN13CoreAnalytics6Client20registerErrorHandlerEONSt3__18functionIFvRKNS1_12basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEEEE(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client20retryXpcMessage_syncERKN10applesauce3xpc4dictE18XPCMessagePriorityb(void) __asm__("__ZN13CoreAnalytics6Client20retryXpcMessage_syncERKN10applesauce3xpc4dictE18XPCMessagePriorityb");
+void __ZN13CoreAnalytics6Client20retryXpcMessage_syncERKN10applesauce3xpc4dictE18XPCMessagePriorityb(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client21cancelConnection_syncEv(void) __asm__("__ZN13CoreAnalytics6Client21cancelConnection_syncEv");
+void __ZN13CoreAnalytics6Client21cancelConnection_syncEv(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE(void) __asm__("__ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE");
+void __ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13EventObserverEEE(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client22acquireSendTransactionEv(void) __asm__("__ZN13CoreAnalytics6Client22acquireSendTransactionEv");
+void __ZN13CoreAnalytics6Client22acquireSendTransactionEv(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client22releaseSendTransactionEv(void) __asm__("__ZN13CoreAnalytics6Client22releaseSendTransactionEv");
+void __ZN13CoreAnalytics6Client22releaseSendTransactionEv(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client23sendCheckinMessage_syncEv(void) __asm__("__ZN13CoreAnalytics6Client23sendCheckinMessage_syncEv");
+void __ZN13CoreAnalytics6Client23sendCheckinMessage_syncEv(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client24handleServerMessage_syncERKN10applesauce3xpc4dictE(void) __asm__("__ZN13CoreAnalytics6Client24handleServerMessage_syncERKN10applesauce3xpc4dictE");
+void __ZN13CoreAnalytics6Client24handleServerMessage_syncERKN10applesauce3xpc4dictE(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client26handleSinkMessageEmit_syncERKN10applesauce3xpc4dictE(void) __asm__("__ZN13CoreAnalytics6Client26handleSinkMessageEmit_syncERKN10applesauce3xpc4dictE");
+void __ZN13CoreAnalytics6Client26handleSinkMessageEmit_syncERKN10applesauce3xpc4dictE(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client26retryXpcMessageHelper_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybhy(void) __asm__("__ZN13CoreAnalytics6Client26retryXpcMessageHelper_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybhy");
+void __ZN13CoreAnalytics6Client26retryXpcMessageHelper_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybhy(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE(void) __asm__("__ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE");
+void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE(void) __asm__("__ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE");
+void __ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client30sendExitBarrierWithTimeoutSyncEj(void) __asm__("__ZN13CoreAnalytics6Client30sendExitBarrierWithTimeoutSyncEj");
+void __ZN13CoreAnalytics6Client30sendExitBarrierWithTimeoutSyncEj(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client3getEv(void) __asm__("__ZN13CoreAnalytics6Client3getEv");
+void __ZN13CoreAnalytics6Client3getEv(void) {}
+
+extern "C" void __ZN13CoreAnalytics6Client4initEv(void) __asm__("__ZN13CoreAnalytics6Client4initEv");
+void __ZN13CoreAnalytics6Client4initEv(void) {}
+
+extern "C" void __ZN13CoreAnalytics6ClientC1Ev(void) __asm__("__ZN13CoreAnalytics6ClientC1Ev");
+void __ZN13CoreAnalytics6ClientC1Ev(void) {}
+
+extern "C" void __ZN13CoreAnalytics6ClientC2Ev(void) __asm__("__ZN13CoreAnalytics6ClientC2Ev");
+void __ZN13CoreAnalytics6ClientC2Ev(void) {}
+
+extern "C" void __ZNK13CoreAnalytics6Client11isEventUsedENSt3__117basic_string_viewIcNS1_11char_traitsIcEEEE(void) __asm__("__ZNK13CoreAnalytics6Client11isEventUsedENSt3__117basic_string_viewIcNS1_11char_traitsIcEEEE");
+void __ZNK13CoreAnalytics6Client11isEventUsedENSt3__117basic_string_viewIcNS1_11char_traitsIcEEEE(void) {}
+
+extern "C" void __ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE(void) __asm__("__ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE");
+void __ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE(void) {}
+
+extern "C" void __ZNK13CoreAnalytics6Client9hasConfigEv(void) __asm__("__ZNK13CoreAnalytics6Client9hasConfigEv");
+void __ZNK13CoreAnalytics6Client9hasConfigEv(void) {}
+
+extern "C" void __ZTIN13CoreAnalytics13EventObserverE(void) __asm__("__ZTIN13CoreAnalytics13EventObserverE");
+void __ZTIN13CoreAnalytics13EventObserverE(void) {}
+
+extern "C" void __ZTIN13CoreAnalytics21ConfigurationObserverE(void) __asm__("__ZTIN13CoreAnalytics21ConfigurationObserverE");
+void __ZTIN13CoreAnalytics21ConfigurationObserverE(void) {}
+
+extern "C" void __ZTSN13CoreAnalytics13EventObserverE(void) __asm__("__ZTSN13CoreAnalytics13EventObserverE");
+void __ZTSN13CoreAnalytics13EventObserverE(void) {}
+
+extern "C" void __ZTSN13CoreAnalytics21ConfigurationObserverE(void) __asm__("__ZTSN13CoreAnalytics21ConfigurationObserverE");
+void __ZTSN13CoreAnalytics21ConfigurationObserverE(void) {}
+
+extern "C" void __ZTVN13CoreAnalytics13EventObserverE(void) __asm__("__ZTVN13CoreAnalytics13EventObserverE");
+void __ZTVN13CoreAnalytics13EventObserverE(void) {}
+
+extern "C" void __ZTVN13CoreAnalytics21ConfigurationObserverE(void) __asm__("__ZTVN13CoreAnalytics21ConfigurationObserverE");
+void __ZTVN13CoreAnalytics21ConfigurationObserverE(void) {}
+

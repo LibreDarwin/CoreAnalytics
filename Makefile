@@ -34,7 +34,7 @@ INSTALL_NAME := /System/Library/PrivateFrameworks/CoreAnalytics.framework/Versio
 
 HDRS := include/CoreAnalytics/CoreAnalytics.h $(FW_SRC)/ca_internal.h
 OBJS := $(OBJDIR)/api.o $(OBJDIR)/client.o $(OBJDIR)/json.o $(OBJDIR)/observers.o \
-	$(OBJDIR)/QueryValues.o
+	$(OBJDIR)/QueryValues.o $(OBJDIR)/cpp_stubs.o
 
 all: $(FRAMEWORK)/CoreAnalytics
 
@@ -106,6 +106,10 @@ exports-check: all
 	FW="build/$(CONFIG)/CoreAnalytics.framework/CoreAnalytics" bash tests/exports.sh
 
 test: json-check exports-check payload-parity
+
+$(OBJDIR)/cpp_stubs.o: $(FW_SRC)/cpp_stubs.cpp
+	@mkdir -p $(OBJDIR)
+	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/cpp_stubs.cpp
 
 clean:
 	rm -rf build
