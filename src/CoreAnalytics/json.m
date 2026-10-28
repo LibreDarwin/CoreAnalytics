@@ -15,6 +15,7 @@
 #import "ca_internal.h"
 
 #include <CoreFoundation/CoreFoundation.h>
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -343,13 +344,31 @@ ns_utf8(NSString *s, NSString *what)
 	return u;
 }
 
+/* indent < 0: compact, with Apple's depth limit (makeJsonFromNSObject).
+ * indent >= 0: nlohmann's pretty layout for an already-parsed value, which
+ * has no depth limit. */
 static void
-ns_to_json(id obj, unsigned depth, ca_buf *b)
+newline(ca_buf *b, int indent, unsigned level)
 {
-	if (depth >= CA_MAX_DEPTH)
+	buf_putc(b, '\n');
+	for (unsigned i = 0; i < (unsigned)indent * level; i++)
+		buf_putc(b, ' ');
+}
+
+static void
+ns_to_json(id obj, unsigned depth, int indent, ca_buf *b)
+{
+	if (indent < 0 && depth >= CA_MAX_DEPTH)
 		ns_raise(@"Object exceeded the max depth");
 
 	if ([obj isKindOfClass:[NSString class]]) {
+		if (indent >= 0) {
+			/* Parsed JSON strings may hold U+0000; keep every byte. */
+			NSData *d = [obj dataUsingEncoding:NSUTF8StringEncoding];
+			if (d == nil || !put_string(b, [d bytes], [d length]))
+				ns_raise(@"Invalid non-UTF8 character(s) in string value");
+			return;
+		}
 		const char *u = ns_utf8(obj, @"string value");
 		if (!put_string(b, u, strlen(u)))
 			ns_raise(@"Invalid non-UTF8 character(s) in string value");
@@ -367,13 +386,15 @@ ns_to_json(id obj, unsigned depth, ca_buf *b)
 			break;
 		case NUM_DOUBLE: {
 			double d = [obj doubleValue];
-			check_finite(d, false);
-			put_double(b, d);
+			if (indent < 0)
+				check_finite(d, false);
+			put_double(b, d);	/* nlohmann dumps non-finite as null */
 			break;
 		}
 		case NUM_FLOAT: {
 			float f = [obj floatValue];
-			check_finite(f, true);
+			if (indent < 0)
+				check_finite(f, true);
 			put_double(b, (double)f);
 			break;
 		}
@@ -397,11 +418,15 @@ ns_to_json(id obj, unsigned depth, ca_buf *b)
 			for (i = 0; i < n; i++) {
 				if (i)
 					buf_putc(b, ',');
+				if (indent >= 0)
+					newline(b, indent, depth + 1);
 				if (!put_string(b, kvs[i].k, strlen(kvs[i].k)))
 					ns_raise(@"Invalid non-UTF8 character(s) in dictionary key");
-				buf_putc(b, ':');
-				ns_to_json(kvs[i].v, depth + 1, b);
+				buf_puts(b, indent >= 0 ? ": " : ":");
+				ns_to_json(kvs[i].v, depth + 1, indent, b);
 			}
+			if (indent >= 0 && n != 0)
+				newline(b, indent, depth);
 			buf_putc(b, '}');
 		} @finally {
 			free(kvs);
@@ -413,8 +438,12 @@ ns_to_json(id obj, unsigned depth, ca_buf *b)
 			if (!first)
 				buf_putc(b, ',');
 			first = false;
-			ns_to_json(el, depth + 1, b);
+			if (indent >= 0)
+				newline(b, indent, depth + 1);
+			ns_to_json(el, depth + 1, indent, b);
 		}
+		if (indent >= 0 && !first)
+			newline(b, indent, depth);
 		buf_putc(b, ']');
 	} else if ([obj isKindOfClass:[NSData class]]) {
 		put_hex(b, [obj bytes], [obj length]);
@@ -429,8 +458,319 @@ bool
 ca_json_from_ns(id obj, ca_buf *out)
 {
 	out->len = 0;
-	ns_to_json(obj, 0, out);
+	ns_to_json(obj, 0, -1, out);
 	return true;
+}
+
+bool
+ca_json_pretty_from_ns(id obj, int indent, ca_buf *out)
+{
+	out->len = 0;
+	ns_to_json(obj, 0, indent, out);
+	return true;
+}
+
+/* --- parsing ------------------------------------------------------------ */
+
+/* A strict RFC 8259 parser with nlohmann's typing: integers that fit
+ * int64 (negative) or uint64 (non-negative) stay integers, everything
+ * else numeric is a double; duplicate object keys keep the last value.
+ * Values become Foundation objects whose NSNumber objCType preserves that
+ * typing, so ns_to_json() writes them back the way nlohmann would. */
+
+typedef struct {
+	const char *p, *end;
+} lexer;
+
+static void
+skip_ws(lexer *lx)
+{
+	while (lx->p < lx->end && (*lx->p == ' ' || *lx->p == '\t' ||
+	    *lx->p == '\n' || *lx->p == '\r'))
+		lx->p++;
+}
+
+static bool
+lit(lexer *lx, const char *word)
+{
+	size_t n = strlen(word);
+	if ((size_t)(lx->end - lx->p) < n || memcmp(lx->p, word, n) != 0)
+		return false;
+	lx->p += n;
+	return true;
+}
+
+static int
+hex4(lexer *lx)
+{
+	int v = 0;
+	if (lx->end - lx->p < 4)
+		return -1;
+	for (int i = 0; i < 4; i++) {
+		char c = *lx->p++;
+		v <<= 4;
+		if (c >= '0' && c <= '9')
+			v |= c - '0';
+		else if (c >= 'a' && c <= 'f')
+			v |= c - 'a' + 10;
+		else if (c >= 'A' && c <= 'F')
+			v |= c - 'A' + 10;
+		else
+			return -1;
+	}
+	return v;
+}
+
+static void
+put_utf8(ca_buf *b, uint32_t cp)
+{
+	char u[4];
+	size_t n;
+	if (cp < 0x80) {
+		u[0] = (char)cp;
+		n = 1;
+	} else if (cp < 0x800) {
+		u[0] = (char)(0xC0 | cp >> 6);
+		u[1] = (char)(0x80 | (cp & 0x3F));
+		n = 2;
+	} else if (cp < 0x10000) {
+		u[0] = (char)(0xE0 | cp >> 12);
+		u[1] = (char)(0x80 | (cp >> 6 & 0x3F));
+		u[2] = (char)(0x80 | (cp & 0x3F));
+		n = 3;
+	} else {
+		u[0] = (char)(0xF0 | cp >> 18);
+		u[1] = (char)(0x80 | (cp >> 12 & 0x3F));
+		u[2] = (char)(0x80 | (cp >> 6 & 0x3F));
+		u[3] = (char)(0x80 | (cp & 0x3F));
+		n = 4;
+	}
+	buf_put(b, u, n);
+}
+
+/* Parses a string body (after the opening quote) into b. */
+static bool
+parse_string(lexer *lx, ca_buf *b)
+{
+	b->len = 0;
+	buf_grow(b, 0);
+	b->ptr[0] = '\0';
+	while (lx->p < lx->end) {
+		unsigned char c = (unsigned char)*lx->p;
+		if (c == '"') {
+			lx->p++;
+			return true;
+		}
+		if (c < 0x20)
+			return false;
+		if (c != '\\') {
+			size_t n = utf8_seq((const unsigned char *)lx->p, (size_t)(lx->end - lx->p));
+			if (n == 0)
+				return false;
+			buf_put(b, lx->p, n);
+			lx->p += n;
+			continue;
+		}
+		if (++lx->p >= lx->end)
+			return false;
+		switch (*lx->p++) {
+		case '"':  buf_putc(b, '"'); break;
+		case '\\': buf_putc(b, '\\'); break;
+		case '/':  buf_putc(b, '/'); break;
+		case 'b':  buf_putc(b, '\b'); break;
+		case 'f':  buf_putc(b, '\f'); break;
+		case 'n':  buf_putc(b, '\n'); break;
+		case 'r':  buf_putc(b, '\r'); break;
+		case 't':  buf_putc(b, '\t'); break;
+		case 'u': {
+			int hi = hex4(lx);
+			uint32_t cp;
+			if (hi < 0 || (hi >= 0xDC00 && hi <= 0xDFFF))
+				return false;
+			cp = (uint32_t)hi;
+			if (hi >= 0xD800 && hi <= 0xDBFF) {
+				if (!lit(lx, "\\u"))
+					return false;
+				int lo = hex4(lx);
+				if (lo < 0xDC00 || lo > 0xDFFF)
+					return false;
+				cp = 0x10000 + (((uint32_t)hi - 0xD800) << 10) + ((uint32_t)lo - 0xDC00);
+			}
+			put_utf8(b, cp);
+			break;
+		}
+		default:
+			return false;
+		}
+	}
+	return false;
+}
+
+static NSString *
+string_from_buf(const ca_buf *b)
+{
+	return [[NSString alloc] initWithBytes:b->ptr length:b->len encoding:NSUTF8StringEncoding];
+}
+
+static NSNumber *
+parse_number(lexer *lx)
+{
+	const char *s = lx->p;
+	bool is_float = false;
+
+	if (lx->p < lx->end && *lx->p == '-')
+		lx->p++;
+	if (lx->p >= lx->end)
+		return nil;
+	if (*lx->p == '0')
+		lx->p++;
+	else if (*lx->p >= '1' && *lx->p <= '9')
+		while (lx->p < lx->end && *lx->p >= '0' && *lx->p <= '9')
+			lx->p++;
+	else
+		return nil;
+	if (lx->p < lx->end && *lx->p == '.') {
+		is_float = true;
+		if (++lx->p >= lx->end || *lx->p < '0' || *lx->p > '9')
+			return nil;
+		while (lx->p < lx->end && *lx->p >= '0' && *lx->p <= '9')
+			lx->p++;
+	}
+	if (lx->p < lx->end && (*lx->p == 'e' || *lx->p == 'E')) {
+		is_float = true;
+		lx->p++;
+		if (lx->p < lx->end && (*lx->p == '+' || *lx->p == '-'))
+			lx->p++;
+		if (lx->p >= lx->end || *lx->p < '0' || *lx->p > '9')
+			return nil;
+		while (lx->p < lx->end && *lx->p >= '0' && *lx->p <= '9')
+			lx->p++;
+	}
+
+	char tmp[512];
+	size_t n = (size_t)(lx->p - s);
+	char *num = n < sizeof tmp ? tmp : malloc(n + 1);
+	memcpy(num, s, n);
+	num[n] = '\0';
+
+	NSNumber *r = nil;
+	if (!is_float) {
+		errno = 0;
+		if (*num == '-') {
+			long long v = strtoll(num, NULL, 10);
+			if (errno == 0)
+				r = @(v);
+		} else {
+			unsigned long long v = strtoull(num, NULL, 10);
+			if (errno == 0)
+				r = v > INT64_MAX ? @(v) : @((long long)v);
+		}
+	}
+	if (r == nil)
+		r = @(strtod(num, NULL));
+	if (num != tmp)
+		free(num);
+	return r;
+}
+
+/* Immutable, built the way makeNSObjectFromJson builds it. */
+static NSDictionary *
+frozen_dict(NSDictionary *d)
+{
+	NSUInteger n = [d count];
+	__unsafe_unretained id keys[n ? n : 1], vals[n ? n : 1];
+	[d getObjects:vals andKeys:keys count:n];
+	return [NSDictionary dictionaryWithObjects:vals forKeys:keys count:n];
+}
+
+static id
+parse_value(lexer *lx, ca_buf *sb)
+{
+	skip_ws(lx);
+	if (lx->p >= lx->end)
+		return nil;
+
+	switch (*lx->p) {
+	case '{': {
+		NSMutableDictionary *d = [NSMutableDictionary dictionary];
+		lx->p++;
+		skip_ws(lx);
+		if (lx->p < lx->end && *lx->p == '}') {
+			lx->p++;
+			return frozen_dict(d);
+		}
+		for (;;) {
+			skip_ws(lx);
+			if (lx->p >= lx->end || *lx->p++ != '"' || !parse_string(lx, sb))
+				return nil;
+			NSString *key = string_from_buf(sb);
+			skip_ws(lx);
+			if (lx->p >= lx->end || *lx->p++ != ':')
+				return nil;
+			id v = parse_value(lx, sb);
+			if (v == nil)
+				return nil;
+			d[key] = v;
+			skip_ws(lx);
+			if (lx->p >= lx->end)
+				return nil;
+			if (*lx->p == ',') {
+				lx->p++;
+				continue;
+			}
+			if (*lx->p++ != '}')
+				return nil;
+			return frozen_dict(d);
+		}
+	}
+	case '[': {
+		NSMutableArray *a = [NSMutableArray array];
+		lx->p++;
+		skip_ws(lx);
+		if (lx->p < lx->end && *lx->p == ']') {
+			lx->p++;
+			return [NSArray arrayWithArray:a];
+		}
+		for (;;) {
+			id v = parse_value(lx, sb);
+			if (v == nil)
+				return nil;
+			[a addObject:v];
+			skip_ws(lx);
+			if (lx->p >= lx->end)
+				return nil;
+			if (*lx->p == ',') {
+				lx->p++;
+				continue;
+			}
+			if (*lx->p++ != ']')
+				return nil;
+			return [NSArray arrayWithArray:a];
+		}
+	}
+	case '"':
+		lx->p++;
+		return parse_string(lx, sb) ? string_from_buf(sb) : nil;
+	case 't':
+		return lit(lx, "true") ? (__bridge id)kCFBooleanTrue : nil;
+	case 'f':
+		return lit(lx, "false") ? (__bridge id)kCFBooleanFalse : nil;
+	case 'n':
+		return lit(lx, "null") ? [NSNull null] : nil;
+	default:
+		return parse_number(lx);
+	}
+}
+
+id
+ca_ns_from_json(const char *text, size_t len)
+{
+	lexer lx = { text, text + len };
+	ca_buf sb = {0};
+	id v = parse_value(&lx, &sb);
+	ca_buf_free(&sb);
+	skip_ws(&lx);
+	return lx.p == lx.end ? v : nil;
 }
 
 static xpc_object_t

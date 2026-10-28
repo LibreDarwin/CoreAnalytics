@@ -25,6 +25,7 @@
 		C10000010000000000000001 /* api.m in Sources */ = {isa = PBXBuildFile; fileRef = C30000010000000000000001 /* api.m */; };
 		C10000010000000000000002 /* client.m in Sources */ = {isa = PBXBuildFile; fileRef = C30000010000000000000002 /* client.m */; };
 		C10000010000000000000003 /* json.m in Sources */ = {isa = PBXBuildFile; fileRef = C30000010000000000000003 /* json.m */; };
+		C10000010000000000000005 /* observers.mm in Sources */ = {isa = PBXBuildFile; fileRef = C3000001000000000000000A /* observers.mm */; };
 		C10000010000000000000004 /* CoreAnalytics.h in Headers */ = {isa = PBXBuildFile; fileRef = C30000010000000000000004 /* CoreAnalytics.h */; settings = {ATTRIBUTES = (Public, ); }; };
 /* End PBXBuildFile section */
 
@@ -43,6 +44,7 @@
 		C30000010000000000000001 /* api.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = api.m; sourceTree = "<group>"; };
 		C30000010000000000000002 /* client.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = client.m; sourceTree = "<group>"; };
 		C30000010000000000000003 /* json.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = json.m; sourceTree = "<group>"; };
+		C3000001000000000000000A /* observers.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = observers.mm; sourceTree = "<group>"; };
 		C30000010000000000000004 /* CoreAnalytics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CoreAnalytics.h; sourceTree = "<group>"; };
 		C30000010000000000000005 /* ca_internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ca_internal.h; sourceTree = "<group>"; };
 		C30000010000000000000006 /* CoreAnalytics.exp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.exports; path = CoreAnalytics.exp; sourceTree = "<group>"; };
@@ -102,6 +104,7 @@
 				C30000010000000000000001 /* api.m */,
 				C30000010000000000000002 /* client.m */,
 				C30000010000000000000003 /* json.m */,
+				C3000001000000000000000A /* observers.mm */,
 				C30000010000000000000005 /* ca_internal.h */,
 				C30000010000000000000006 /* CoreAnalytics.exp */,
 				C30000010000000000000007 /* Info.plist */,
@@ -215,6 +218,7 @@
 				C10000010000000000000001 /* api.m in Sources */,
 				C10000010000000000000002 /* client.m in Sources */,
 				C10000010000000000000003 /* json.m in Sources */,
+				C10000010000000000000005 /* observers.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -282,6 +286,7 @@
 					Foundation,
 					"-framework",
 					CoreFoundation,
+					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.apple.analyticsd;
 				PRODUCT_NAME = CoreAnalytics;
@@ -305,6 +310,7 @@
 					Foundation,
 					"-framework",
 					CoreFoundation,
+					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.apple.analyticsd;
 				PRODUCT_NAME = CoreAnalytics;

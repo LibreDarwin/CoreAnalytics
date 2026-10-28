@@ -32,7 +32,7 @@ FW_VER    := $(FRAMEWORK)/Versions/A
 INSTALL_NAME := /System/Library/PrivateFrameworks/CoreAnalytics.framework/Versions/A/CoreAnalytics
 
 HDRS := include/CoreAnalytics/CoreAnalytics.h $(FW_SRC)/ca_internal.h
-OBJS := $(OBJDIR)/api.o $(OBJDIR)/client.o $(OBJDIR)/json.o
+OBJS := $(OBJDIR)/api.o $(OBJDIR)/client.o $(OBJDIR)/json.o $(OBJDIR)/observers.o
 
 all: $(FRAMEWORK)/CoreAnalytics
 
@@ -41,7 +41,7 @@ $(FRAMEWORK)/CoreAnalytics: $(OBJS) $(FW_SRC)/CoreAnalytics.exp $(FW_SRC)/Info.p
 	$(CC) $(MFLAGS) -dynamiclib -install_name $(INSTALL_NAME) \
 	    -compatibility_version 1 -current_version 1 \
 	    -exported_symbols_list $(FW_SRC)/CoreAnalytics.exp \
-	    -o $(FW_VER)/CoreAnalytics $(OBJS) -framework Foundation -framework CoreFoundation
+	    -o $(FW_VER)/CoreAnalytics $(OBJS) -framework Foundation -framework CoreFoundation -lc++
 	cp include/CoreAnalytics/CoreAnalytics.h $(FW_VER)/Headers/CoreAnalytics.h
 	cp $(FW_SRC)/Info.plist $(FW_VER)/Resources/Info.plist
 	ln -sfh A $(FRAMEWORK)/Versions/Current
@@ -60,6 +60,11 @@ $(OBJDIR)/client.o: $(FW_SRC)/client.m $(HDRS)
 $(OBJDIR)/json.o: $(FW_SRC)/json.m $(HDRS)
 	@mkdir -p $(OBJDIR)
 	$(CC) $(MFLAGS) -c -o $@ $(FW_SRC)/json.m
+
+# Objective-C++ so a rejected subscription throws std::runtime_error.
+$(OBJDIR)/observers.o: $(FW_SRC)/observers.mm $(HDRS)
+	@mkdir -p $(OBJDIR)
+	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/observers.mm
 
 # The JSON writer is internal, so its check links json.o directly.
 JSON_CHECK := $(BUILD_DIR)/json_check

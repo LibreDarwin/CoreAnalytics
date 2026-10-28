@@ -51,7 +51,7 @@ extern void abort_with_reason(uint32_t reason_namespace, uint64_t reason_code,
 #define CA_FIRST_RETRY_MS	100
 #define CA_EXIT_TIMEOUT_MS	300
 
-#define CA_CONFIG_MAGIC		0x16a8
+#define CA_CONFIG_MAGIC		0xF09116A8u
 #define CA_CONFIG_VERSION	1
 
 os_log_t ca_log_client, ca_log_send, ca_log_send_diag, ca_log_mgmt;
@@ -192,6 +192,36 @@ config_has_event(const struct ca_config *c, const char *name, size_t len)
 	return false;
 }
 
+/* FrameworkConfiguration::getExternalConfiguration: after the framework
+ * section (from end offset + 1 up to the u32 offset at +0x0c) the blob
+ * holds a JSON array of {"kind": ..., "configuration": ...} entries. */
+id
+ca_config_external(const struct ca_config *c, const char *kind)
+{
+	const char *base = c->base;
+	const uint32_t *h = c->base;
+
+	/* ponytail: Apple parses with exceptions on; a malformed section is
+	 * treated as "no configuration" here rather than throwing. */
+	if (h[3] <= h[5] + 1 || h[3] > c->size)
+		return nil;
+	id all = ca_ns_from_json(base + h[5] + 1, h[3] - (h[5] + 1));
+	if (![all isKindOfClass:[NSArray class]]) {
+		os_log_debug(ca_log_config, "[FrameworkConfiguration] external configuration is not an array");
+		return nil;
+	}
+	NSString *want = @(kind);
+	for (id entry in (NSArray *)all) {
+		if (![entry isKindOfClass:[NSDictionary class]])
+			continue;
+		id k = entry[@"kind"];
+		if ([k isKindOfClass:[NSString class]] && [k isEqualToString:want] &&
+		    entry[@"configuration"] != nil)
+			return entry[@"configuration"];
+	}
+	return nil;
+}
+
 /* --- client state ------------------------------------------------------- */
 
 static struct {
@@ -208,6 +238,10 @@ static struct {
 	bool allow_all;
 	os_transaction_t send_txn;
 	int active_sends;
+	/* Weak; dead entries are skipped, never removed (as in Apple's). */
+	NSPointerArray *config_observers;
+	NSPointerArray *event_observers;
+	void (^error_handler)(const char *);
 } C;
 
 static bool
@@ -409,7 +443,29 @@ handle_configuration_change_sync(xpc_object_t msg)
 		os_log(ca_log_client, "Received configuration update from daemon (initial)");
 	else
 		os_log(ca_log_client, "Received configuration update from daemon (change)");
+	if (c != NULL)
+		for (id<CAConfigurationObserverImpl> o in C.config_observers)
+			if (o != nil)
+				[o notifyConfigurationActivated:c];
 	config_release(old);
+}
+
+static void
+handle_sink_message_emit_sync(xpc_object_t msg)
+{
+	const char *text = xpc_dictionary_get_string(msg, "message");
+	if (text == NULL) {
+		os_log_error(ca_log_client, "#Error: Received message emit from daemon but no message.");
+		return;
+	}
+	id message = ca_ns_from_json(text, strlen(text));
+	if (![message isKindOfClass:[NSDictionary class]]) {
+		os_log_error(ca_log_client, "#Error: Received message emit from daemon but was not parsable.");
+		return;
+	}
+	for (id<CAEventObserverImpl> o in C.event_observers)
+		if (o != nil)
+			[o notifyMessageEmitted:message];
 }
 
 static void
@@ -420,7 +476,7 @@ handle_server_message_sync(xpc_object_t msg)
 	if (n != NULL && strcmp(n, "configuration-change") == 0)
 		handle_configuration_change_sync(msg);
 	else if (n != NULL && strcmp(n, "message-emit") == 0)
-		;	/* consumed by AnalyticsEventObserver, not part of the C API */
+		handle_sink_message_emit_sync(msg);
 	else if (os_log_type_enabled(ca_log_client, OS_LOG_TYPE_ERROR)) {
 		char *d = describe(msg);
 		os_log_error(ca_log_client, "#Error: Received unknown event from daemon: %s", d);
@@ -434,9 +490,13 @@ handle_connection_event_sync(xpc_object_t ev)
 	if (ev == XPC_ERROR_CONNECTION_INVALID) {
 		os_log(ca_log_client, "XPC connection invalidated (daemon unloaded/disabled)");
 		C.daemon_running = C.checked_in = false;
+		if (C.error_handler != nil)
+			C.error_handler(xpc_dictionary_get_string(ev, XPC_ERROR_KEY_DESCRIPTION));
 	} else if (ev == XPC_ERROR_CONNECTION_INTERRUPTED) {
 		os_log(ca_log_client, "XPC connection interrupted (daemon probably exited)");
 		C.daemon_running = C.checked_in = false;
+		if (C.error_handler != nil)
+			C.error_handler(xpc_dictionary_get_string(ev, XPC_ERROR_KEY_DESCRIPTION));
 	} else if (xpc_get_type(ev) == XPC_TYPE_DICTIONARY) {
 		handle_server_message_sync(ev);
 	}
@@ -549,6 +609,8 @@ client_get(void)
 		C.retry_queue = dispatch_queue_create("com.apple.CoreAnalytics::Client XPC Retry", DISPATCH_QUEUE_SERIAL);
 		C.in_flight = dispatch_semaphore_create(CA_MAX_IN_FLIGHT);
 		C.conn = xpc_null_create();
+		C.config_observers = [NSPointerArray weakObjectsPointerArray];
+		C.event_observers = [NSPointerArray weakObjectsPointerArray];
 		dispatch_sync(C.queue, ^{
 			client_init_sync();
 		});
@@ -621,4 +683,37 @@ ca_client_mgmt(const char *command, xpc_object_t args)
 	if (reply == nil || xpc_get_type(reply) != XPC_TYPE_DICTIONARY)
 		return xpc_null_create();
 	return reply;
+}
+
+void
+ca_client_register_event_observer(id<CAEventObserverImpl> impl)
+{
+	client_get();
+	dispatch_sync(C.queue, ^{
+		[C.event_observers addPointer:(__bridge void *)impl];
+		send_checkin_sync();
+	});
+}
+
+void
+ca_client_register_configuration_observer(id<CAConfigurationObserverImpl> impl)
+{
+	client_get();
+	dispatch_sync(C.queue, ^{
+		[C.config_observers addPointer:(__bridge void *)impl];
+		struct ca_config *c = config_load();
+		if (c != NULL)
+			[impl notifyConfigurationActivated:c];
+		config_release(c);
+		send_checkin_sync();
+	});
+}
+
+void
+ca_client_register_error_handler(void (^handler)(const char *))
+{
+	client_get();
+	dispatch_sync(C.queue, ^{
+		C.error_handler = handler;
+	});
 }

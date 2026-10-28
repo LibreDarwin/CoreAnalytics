@@ -116,6 +116,39 @@ main(void)
 		xpc_dictionary_set_string(badutf, "s", "\xc0\xaf");
 		expect_xpc(badutf, "[json.exception.type_error.316] invalid UTF-8 byte");
 	}
+	@autoreleasepool {
+		/* parse -> dump(4): the AnalyticsEventObserver message format */
+		struct { const char *in, *out; } cases[] = {
+			{ "{\"b\":[1,2.50,{}],\"a\":\"x\\u00e9\\ud83d\\ude00\",\"c\":[]}",
+			  "{\n    \"a\": \"x\xc3\xa9\xf0\x9f\x98\x80\",\n    \"b\": [\n        1,\n        2.5,\n"
+			  "        {}\n    ],\n    \"c\": []\n}" },
+			{ " {\"k\":1,\"k\":2} ", "{\n    \"k\": 2\n}" },
+			{ "{\"u\":18446744073709551615,\"o\":18446744073709551616,\"n\":-0,\"e\":1E2,"
+			  "\"t\":true,\"z\":null,\"s\":\"a\\u0000b\"}",
+			  "{\n    \"e\": 100.0,\n    \"n\": 0,\n    \"o\": 1.8446744073709552e+19,\n"
+			  "    \"s\": \"a\\u0000b\",\n    \"t\": true,\n    \"u\": 18446744073709551615,\n"
+			  "    \"z\": null\n}" },
+			{ "{}", "{}" },
+		};
+		for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+			ca_buf b = {0};
+			id v = ca_ns_from_json(cases[i].in, strlen(cases[i].in));
+			const char *got = v ? (ca_json_pretty_from_ns(v, 4, &b), b.ptr) : "(parse error)";
+			if (strcmp(got, cases[i].out) != 0) {
+				printf("FAIL parse %zu:\nwant %s\ngot  %s\n", i, cases[i].out, got);
+				failures++;
+			}
+			ca_buf_free(&b);
+		}
+
+		const char *bad[] = { "", "{", "[1,]", "{\"a\" 1}", "01", "1.", "\"\\ud800\"",
+		    "\"a\x01\"", "tru", "{} x", "\"\xc0\xaf\"" };
+		for (size_t i = 0; i < sizeof bad / sizeof bad[0]; i++)
+			if (ca_ns_from_json(bad[i], strlen(bad[i])) != nil) {
+				printf("FAIL parse accepted bad input %zu: %s\n", i, bad[i]);
+				failures++;
+			}
+	}
 	if (failures == 0)
 		printf("json_check: all cases pass\n");
 	return failures != 0;

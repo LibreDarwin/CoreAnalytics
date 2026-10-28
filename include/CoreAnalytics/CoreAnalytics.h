@@ -130,4 +130,59 @@ void AnalyticsSetCallbackForQueriedEventWithQueue(NSString *eventName,
 
 __END_DECLS
 
+/* --- observers ---------------------------------------------------------- */
+
+#ifdef __OBJC__
+
+@class AnalyticsEventObserver;
+@class AnalyticsConfigurationObserver;
+
+@protocol AnalyticsEventObserverDelegate <NSObject>
+/* `message` is the emitted JSON object, pretty-printed (4-space indent,
+ * sorted keys). */
+- (void)observer:(AnalyticsEventObserver *)observer didEmitMessage:(NSString *)message;
+@end
+
+@protocol AnalyticsConfigurationObserverDelegate <NSObject>
+/* `configuration` is the Foundation form of the daemon's configuration of
+ * kind `type`, or nil when the active configuration has none. */
+- (void)observer:(AnalyticsConfigurationObserver *)observer
+    didChangeConfiguration:(id)configuration type:(NSString *)type;
+@end
+
+/* The start/stop methods always return YES (Apple's do too). */
+
+/* Receives messages analyticsd emits for the given events.  The delegate
+ * and delegate queue are captured when observing starts; delegate calls
+ * are dispatch_barrier_async'd onto the delegate queue, which must be set. */
+@interface AnalyticsEventObserver : NSObject
+@property (nonatomic, strong) dispatch_queue_t queue;
+@property (nonatomic, weak) id<AnalyticsEventObserverDelegate> delegate;
+@property (nonatomic, strong) dispatch_queue_t delegateQueue;
+- (void)setEventObserverDelegate:(id<AnalyticsEventObserverDelegate>)delegate
+    queue:(dispatch_queue_t)queue;
+- (BOOL)startObservingEventList:(NSArray<NSString *> *)events;
+/* Throws std::runtime_error("create-event-observer failed") when
+ * analyticsd rejects the request.  `errorHandler` (nil clears it) is
+ * called with the XPC error description when the connection drops. */
+- (BOOL)startObservingEventList:(NSArray<NSString *> *)events
+    withErrorHandler:(void (^)(NSString *description))errorHandler;
+- (BOOL)stopObserving;
+@end
+
+/* Receives the daemon's external configuration of one kind whenever a new
+ * configuration is activated (and at once if one is already active). */
+@interface AnalyticsConfigurationObserver : NSObject
+@property (nonatomic, strong) dispatch_queue_t queue;
+@property (nonatomic, weak) id<AnalyticsConfigurationObserverDelegate> delegate;
+@property (nonatomic, strong) dispatch_queue_t delegateQueue;
+- (void)setConfigurationObserverDelegate:(id<AnalyticsConfigurationObserverDelegate>)delegate
+    queue:(dispatch_queue_t)queue;
+- (BOOL)startObservingConfigurationType:(NSString *)type;
+/* Stops observing regardless of `type`. */
+- (BOOL)stopObservingConfigurationType:(NSString *)type;
+@end
+
+#endif /* __OBJC__ */
+
 #endif /* _COREANALYTICS_COREANALYTICS_H_ */
