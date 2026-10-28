@@ -165,17 +165,22 @@ std::string analytics_tool_config_list() {
             return "unknown";
         throw std::runtime_error("config-list failed");
     }
-    const char *err = xpc_dictionary_get_string(r, "error");
-    if (err != NULL)
+    if (xpc_dictionary_get_value(r, "error") != NULL)
         throw std::runtime_error("config-list failed");
-    const char *cl = xpc_dictionary_get_string(r, "config-list");
-    if (cl != NULL)
-        return std::string(cl);
+    xpc_object_t clv = xpc_dictionary_get_value(r, "config-list");
+    if (clv != NULL) {
+        if (xpc_get_type(clv) == XPC_TYPE_STRING)
+            return std::string(xpc_string_get_string_ptr(clv));
+        return std::string("");
+    }
+    char *e = NULL;
     ca_buf b = {0};
-    if (ca_json_from_xpc(r, &b, nullptr)) {
+    if (ca_json_from_xpc(r, &b, &e)) {
         std::string out(b.ptr ? b.ptr : "");
         ca_buf_free(&b);
+        if (e) free(e);
         return out;
     }
+    if (e) free(e);
     return "unknown";
 }
