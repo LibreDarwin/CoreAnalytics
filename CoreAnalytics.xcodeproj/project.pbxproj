@@ -1,0 +1,362 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		C70000010000000000000002 /* exports-check */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = C80000010000000000000002 /* Build configuration list for PBXAggregateTarget "exports-check" */;
+			buildPhases = (
+				C50000010000000000000003 /* exports check */,
+			);
+			dependencies = (
+				C7B000010000000000000002 /* PBXTargetDependency */,
+			);
+			name = "exports-check";
+			productName = "exports-check";
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		C10000010000000000000001 /* api.m in Sources */ = {isa = PBXBuildFile; fileRef = C30000010000000000000001 /* api.m */; };
+		C10000010000000000000002 /* client.m in Sources */ = {isa = PBXBuildFile; fileRef = C30000010000000000000002 /* client.m */; };
+		C10000010000000000000003 /* json.m in Sources */ = {isa = PBXBuildFile; fileRef = C30000010000000000000003 /* json.m */; };
+		C10000010000000000000004 /* CoreAnalytics.h in Headers */ = {isa = PBXBuildFile; fileRef = C30000010000000000000004 /* CoreAnalytics.h */; settings = {ATTRIBUTES = (Public, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C7B000010000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C60000010000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C70000010000000000000001;
+			remoteInfo = CoreAnalytics;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		C20000010000000000000001 /* CoreAnalytics.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = CoreAnalytics.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		C30000010000000000000001 /* api.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = api.m; sourceTree = "<group>"; };
+		C30000010000000000000002 /* client.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = client.m; sourceTree = "<group>"; };
+		C30000010000000000000003 /* json.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = json.m; sourceTree = "<group>"; };
+		C30000010000000000000004 /* CoreAnalytics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CoreAnalytics.h; sourceTree = "<group>"; };
+		C30000010000000000000005 /* ca_internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ca_internal.h; sourceTree = "<group>"; };
+		C30000010000000000000006 /* CoreAnalytics.exp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.exports; path = CoreAnalytics.exp; sourceTree = "<group>"; };
+		C30000010000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C30000010000000000000008 /* exports.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = exports.sh; sourceTree = "<group>"; };
+		C30000010000000000000009 /* json_check.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = json_check.m; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C50000010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C60000050000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				C60000050000000000000002 /* include */,
+				C60000050000000000000003 /* src */,
+				C60000050000000000000004 /* tests */,
+				C90000040000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C60000050000000000000002 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				C60000050000000000000005 /* CoreAnalytics */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		C60000050000000000000005 /* CoreAnalytics */ = {
+			isa = PBXGroup;
+			children = (
+				C30000010000000000000004 /* CoreAnalytics.h */,
+			);
+			path = CoreAnalytics;
+			sourceTree = "<group>";
+		};
+		C60000050000000000000003 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				C60000050000000000000006 /* CoreAnalytics */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		C60000050000000000000006 /* CoreAnalytics */ = {
+			isa = PBXGroup;
+			children = (
+				C30000010000000000000001 /* api.m */,
+				C30000010000000000000002 /* client.m */,
+				C30000010000000000000003 /* json.m */,
+				C30000010000000000000005 /* ca_internal.h */,
+				C30000010000000000000006 /* CoreAnalytics.exp */,
+				C30000010000000000000007 /* Info.plist */,
+			);
+			path = CoreAnalytics;
+			sourceTree = "<group>";
+		};
+		C60000050000000000000004 /* tests */ = {
+			isa = PBXGroup;
+			children = (
+				C30000010000000000000008 /* exports.sh */,
+				C30000010000000000000009 /* json_check.m */,
+			);
+			path = tests;
+			sourceTree = "<group>";
+		};
+		C90000040000000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C20000010000000000000001 /* CoreAnalytics.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		C50000010000000000000005 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C10000010000000000000004 /* CoreAnalytics.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		C70000010000000000000001 /* CoreAnalytics */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C80000010000000000000001 /* Build configuration list for PBXNativeTarget "CoreAnalytics" */;
+			buildPhases = (
+				C50000010000000000000005 /* Headers */,
+				C50000010000000000000004 /* Sources */,
+				C50000010000000000000001 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CoreAnalytics;
+			productName = CoreAnalytics;
+			productReference = C20000010000000000000001 /* CoreAnalytics.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C60000010000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = C80000010000000000000004 /* Build configuration list for PBXProject "CoreAnalytics" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C60000050000000000000001;
+			productRefGroup = C90000040000000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C70000010000000000000001 /* CoreAnalytics */,
+				C70000010000000000000002 /* exports-check */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		C50000010000000000000003 /* exports check */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "exports check";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -e\nFW=\"$BUILT_PRODUCTS_DIR/CoreAnalytics.framework/CoreAnalytics\" bash \"$SRCROOT/tests/exports.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C50000010000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C10000010000000000000001 /* api.m in Sources */,
+				C10000010000000000000002 /* client.m in Sources */,
+				C10000010000000000000003 /* json.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C7B000010000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C70000010000000000000001 /* CoreAnalytics */;
+			targetProxy = C7B000010000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		C80000010000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OBJROOT = "$(SRCROOT)/build/xcode";
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SYMROOT = "$(SRCROOT)/build/xcode";
+			};
+			name = Debug;
+		};
+		C80000010000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_OPTIMIZATION_LEVEL = 2;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OBJROOT = "$(SRCROOT)/build/xcode";
+				SDKROOT = macosx;
+				SYMROOT = "$(SRCROOT)/build/xcode";
+			};
+			name = Release;
+		};
+		C80000010000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = /System/Library/PrivateFrameworks;
+				EXPORTED_SYMBOLS_FILE = src/CoreAnalytics/CoreAnalytics.exp;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/include";
+				INFOPLIST_FILE = src/CoreAnalytics/Info.plist;
+				INSTALL_PATH = /System/Library/PrivateFrameworks;
+				OTHER_LDFLAGS = (
+					"-framework",
+					Foundation,
+					"-framework",
+					CoreFoundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.apple.analyticsd;
+				PRODUCT_NAME = CoreAnalytics;
+				PUBLIC_HEADERS_FOLDER_PATH = Headers;
+			};
+			name = Debug;
+		};
+		C80000010000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = /System/Library/PrivateFrameworks;
+				EXPORTED_SYMBOLS_FILE = src/CoreAnalytics/CoreAnalytics.exp;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/include";
+				INFOPLIST_FILE = src/CoreAnalytics/Info.plist;
+				INSTALL_PATH = /System/Library/PrivateFrameworks;
+				OTHER_LDFLAGS = (
+					"-framework",
+					Foundation,
+					"-framework",
+					CoreFoundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.apple.analyticsd;
+				PRODUCT_NAME = CoreAnalytics;
+				PUBLIC_HEADERS_FOLDER_PATH = Headers;
+			};
+			name = Release;
+		};
+		C80000010000000000000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		C8000001000000000000000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C80000010000000000000001 /* Build configuration list for PBXNativeTarget "CoreAnalytics" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C80000010000000000000007 /* Debug */,
+				C80000010000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C80000010000000000000002 /* Build configuration list for PBXAggregateTarget "exports-check" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C80000010000000000000009 /* Debug */,
+				C8000001000000000000000A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C80000010000000000000004 /* Build configuration list for PBXProject "CoreAnalytics" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C80000010000000000000005 /* Debug */,
+				C80000010000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C60000010000000000000001 /* Project object */;
+}
