@@ -6,8 +6,8 @@
 #include <string_view>
 
 namespace CoreAnalytics {
-class EventObserver { public: virtual ~EventObserver(); };
-class ConfigurationObserver { public: virtual ~ConfigurationObserver(); };
+class EventObserver { public: virtual ~EventObserver(); virtual void notifyMessageEmitted(const std::string &) = 0; };
+class ConfigurationObserver { public: virtual ~ConfigurationObserver(); virtual void notifyConfigurationActivated(const void *) = 0; };
 class Client {
 public:
     Client();
@@ -24,7 +24,7 @@ CoreAnalytics::Client::Client() {}
 CoreAnalytics::Client &CoreAnalytics::Client::get() { static CoreAnalytics::Client instance; return instance; }
 bool CoreAnalytics::Client::hasConfig() const { return ca_client_has_config(); }
 bool CoreAnalytics::Client::isEventUsed(std::string_view name) const { return ca_client_is_event_used(name.data(), name.size()); }
-void CoreAnalytics::Client::allowAllEvents() {}
+void CoreAnalytics::Client::allowAllEvents() { ca_client_allow_all_events(); }
 
 void CASPIEnter(void) { ca_enter(); }
 
@@ -51,8 +51,6 @@ void __Z26analytics_tool_config_dumpv(void) {}
 extern "C" void __Z26analytics_tool_config_infov(void) __asm__("__Z26analytics_tool_config_infov");
 void __Z26analytics_tool_config_infov(void) {}
 
-extern "C" void __Z26analytics_tool_config_listv(void) __asm__("__Z26analytics_tool_config_listv");
-void __Z26analytics_tool_config_listv(void) {}
 
 extern "C" void __Z26analytics_tool_query_clearNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE(void) __asm__("__Z26analytics_tool_query_clearNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE");
 void __Z26analytics_tool_query_clearNSt3__18optionalINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEE(void) {}
@@ -157,3 +155,11 @@ void __ZN13CoreAnalytics6Client21registerEventObserverENSt3__18weak_ptrINS_13Eve
 
 extern "C" void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE(void) __asm__("__ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE");
 void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrINS_21ConfigurationObserverEEE(void) {}
+
+#include <stdexcept>
+#include <string>
+std::string analytics_tool_config_list() {
+    xpc_object_t r = ca_client_mgmt("config-list", nullptr);
+    (void)r;
+    throw std::runtime_error("config-list failed");
+}

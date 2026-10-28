@@ -727,3 +727,10 @@ ca_client_has_config(void)
 		config_release(c);
 	return has;
 }
+
+void
+ca_client_allow_all_events(void)
+{
+	client_get();
+	C.allow_all = true;
+}

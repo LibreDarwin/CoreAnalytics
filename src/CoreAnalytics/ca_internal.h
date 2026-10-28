@@ -59,6 +59,7 @@ void ca_buf_free(ca_buf *b);
 /* --- Client (client.m) -------------------------------------------------- */
 
 bool ca_client_is_event_used(const char *name, size_t len);
+void ca_client_allow_all_events(void);
 
 /* True once a framework configuration has been received. */
 bool ca_client_has_config(void);
