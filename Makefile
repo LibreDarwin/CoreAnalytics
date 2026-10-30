@@ -4,7 +4,7 @@
 #
 #   make                 # build CoreAnalytics.framework for CONFIG (default release)
 #   make CONFIG=debug    # debug build
-#   make test            # JSON checks, export parity, payload parity with Apple's
+#   make test            # JSON checks, export parity, payload and C++ parity with Apple's
 #   make clean
 #
 # The framework keeps Apple's install name, so a binary linked against it
@@ -32,7 +32,7 @@ FRAMEWORK := $(BUILD_DIR)/CoreAnalytics.framework
 FW_VER    := $(FRAMEWORK)/Versions/A
 INSTALL_NAME := /System/Library/PrivateFrameworks/CoreAnalytics.framework/Versions/A/CoreAnalytics
 
-HDRS := include/CoreAnalytics/CoreAnalytics.h $(FW_SRC)/ca_internal.h
+HDRS := include/CoreAnalytics/CoreAnalytics.h $(FW_SRC)/ca_internal.h $(FW_SRC)/nlohmann_json.h
 OBJS := $(OBJDIR)/api.o $(OBJDIR)/client.o $(OBJDIR)/json.o $(OBJDIR)/observers.o \
 	$(OBJDIR)/QueryValues.o $(OBJDIR)/client_cxx.o
 
@@ -106,13 +106,26 @@ $(CAPTURE_LIB): tests/capture_send.c
 payload-parity: $(PAYLOAD_GEN) $(CAPTURE_LIB)
 	GEN="$(PAYLOAD_GEN)" CAP="$(CAPTURE_LIB)" FWDIR="$(BUILD_DIR)" bash tests/payload-parity.sh
 
+# The C++ interface must behave like Apple's; see tests/cxx-parity.sh.
+CXX_DRIVER := $(BUILD_DIR)/cxx_driver
+FAKE_DAEMON := $(BUILD_DIR)/fake_daemon.dylib
+
+$(CXX_DRIVER): tests/cxx_driver.cpp $(FW_SRC)/nlohmann_json.h $(FRAMEWORK)/CoreAnalytics
+	$(CC) $(OPT) -std=c++17 -isysroot "$(SDK)" -I$(FW_SRC) -F$(BUILD_DIR) -o $@ tests/cxx_driver.cpp -framework CoreAnalytics -lc++
+
+$(FAKE_DAEMON): tests/fake_daemon.c
+	$(CC) $(OPT) -fblocks -isysroot "$(SDK)" -dynamiclib -o $@ tests/fake_daemon.c
+
+cxx-parity: $(CXX_DRIVER) $(FAKE_DAEMON)
+	DRV="$(CXX_DRIVER)" FAKE="$(FAKE_DAEMON)" FWDIR="$(BUILD_DIR)" bash tests/cxx-parity.sh
+
 # Every exported symbol of our framework must be one of Apple's C exports.
 exports-check: all
 	FW="build/$(CONFIG)/CoreAnalytics.framework/CoreAnalytics" bash tests/exports.sh
 
-test: json-check exports-check payload-parity
+test: json-check exports-check payload-parity cxx-parity
 
 clean:
 	rm -rf build
 
-.PHONY: all json-check exports-check payload-parity test clean
+.PHONY: all json-check exports-check payload-parity cxx-parity test clean
