@@ -212,7 +212,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -e\nFW=\"$BUILT_PRODUCTS_DIR/CoreAnalytics.framework/CoreAnalytics\" bash \"$SRCROOT/tests/exports.sh\"\n";
+			shellScript = "set -e\nFW=\"$BUILT_PRODUCTS_DIR/CoreAnalytics.framework/CoreAnalytics\" ARCHS=\"arm64 arm64e x86_64\" bash \"$SRCROOT/tests/exports.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

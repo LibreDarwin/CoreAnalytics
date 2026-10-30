@@ -20,12 +20,32 @@ All 100 of Apple's exported symbols are implemented (see
   methods forward to `client.m`, and JSON values cross the interface in
   nlohmann's object layout.
 
+The framework is universal: arm64e (what system processes run), arm64 and
+x86_64 (Intel Macs and Rosetta).
+
 ## Build
 
     make                  # build/release/CoreAnalytics.framework
     make CONFIG=debug
-    make test             # JSON checks, export parity, payload parity with Apple's
+    make test             # all checks below, the parity tests on every slice
+    xcodebuild -project CoreAnalytics.xcodeproj                         # same framework
     xcodebuild -project CoreAnalytics.xcodeproj -target exports-check
+
+`make test` runs:
+
+- `json-check`: the JSON writer and parser on their own;
+- `exports-check`: every slice exports exactly
+  `src/CoreAnalytics/CoreAnalytics.exp`, all of them Apple's symbols;
+- `payload-parity`: event JSON byte for byte against Apple's framework;
+- `cxx-parity`: the C++ interface against Apple's: every
+  `analytics_tool_*` under 22 kinds of daemon reply, the text form of each
+  XPC type, and Client sends, management calls, observers and the error
+  handler.
+
+The parity tests run in-process against Apple's framework and ours with
+interposers standing in for analyticsd, so nothing reaches the daemon.  They
+run once per slice: x86_64 under Rosetta, arm64e only with the
+`-arm64e_preview_abi` boot-arg (required for any non-Apple arm64e code).
 
 The framework keeps Apple's install name, so a binary built against either
 copy loads Apple's by default and ours with
@@ -37,8 +57,7 @@ copy loads Apple's by default and ours with
 Events go to analyticsd as `{command: "send", event, json, timestamp (µs
 since epoch), priority, format}`; the payload is compact JSON with sorted
 keys, laid out like nlohmann::json's `dump()` (numbers via a clean-room
-Grisu2).  `make payload-parity` checks this byte for byte against Apple's
-framework by capturing outgoing messages in-process (nothing is sent).  analyticsd may push a shared-memory
+Grisu2).  analyticsd may push a shared-memory
 configuration (`notification: "configuration-change"`, magic `0xF09116A8`
 v1) listing the events in use, followed by a JSON array of
 `{"kind", "configuration"}` entries for configuration observers; unused
