@@ -215,7 +215,7 @@ mgmt_bool(const char *command, xpc_object_t args, const char **err)
 		*err = xpc_get_type(e) == XPC_TYPE_STRING ? xpc_string_get_string_ptr(e) : "";
 		return false;
 	}
-	return xpc_dictionary_get_bool(reply, command);
+	return ca_xpc_bool(xpc_dictionary_get_value(reply, command));
 }
 
 bool

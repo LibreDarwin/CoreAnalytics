@@ -34,7 +34,7 @@ INSTALL_NAME := /System/Library/PrivateFrameworks/CoreAnalytics.framework/Versio
 
 HDRS := include/CoreAnalytics/CoreAnalytics.h $(FW_SRC)/ca_internal.h
 OBJS := $(OBJDIR)/api.o $(OBJDIR)/client.o $(OBJDIR)/json.o $(OBJDIR)/observers.o \
-	$(OBJDIR)/QueryValues.o $(OBJDIR)/cpp_stubs.o
+	$(OBJDIR)/QueryValues.o $(OBJDIR)/client_cxx.o
 
 all: $(FRAMEWORK)/CoreAnalytics
 
@@ -68,6 +68,11 @@ $(OBJDIR)/json.o: $(FW_SRC)/json.m $(HDRS)
 $(OBJDIR)/observers.o: $(FW_SRC)/observers.mm $(HDRS)
 	@mkdir -p $(OBJDIR)
 	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/observers.mm
+
+# The C++ interface; Objective-C++ so it can adapt C++ observers.
+$(OBJDIR)/client_cxx.o: $(FW_SRC)/client_cxx.mm $(HDRS)
+	@mkdir -p $(OBJDIR)
+	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/client_cxx.mm
 
 # The Swift export.  Its module is named CoreAnalytics (the symbol's
 # mangling depends on it) and imports the framework's C header as its
@@ -106,10 +111,6 @@ exports-check: all
 	FW="build/$(CONFIG)/CoreAnalytics.framework/CoreAnalytics" bash tests/exports.sh
 
 test: json-check exports-check payload-parity
-
-$(OBJDIR)/cpp_stubs.o: $(FW_SRC)/cpp_stubs.mm
-	@mkdir -p $(OBJDIR)
-	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/cpp_stubs.mm
 
 clean:
 	rm -rf build

@@ -75,6 +75,30 @@ bool ca_client_send_event(const char *name, bool (^render)(ca_buf *out),
  * reply dictionary, or XPC null when there is none. */
 xpc_object_t ca_client_mgmt(const char *command, xpc_object_t args);
 
+/* A reply field read as applesauce's dyn_cast_or_default<bool>(v, false):
+ * a bool, or an integer of either sign (non-zero is true). */
+bool ca_xpc_bool(xpc_object_t v);
+
+/* The rest of Apple's CoreAnalytics::Client, one function per method, for
+ * the C++ exports.  ca_client_get() creates the client once (Client::get);
+ * the *_sync functions expect to run on the client queue, as Apple's do. */
+void ca_client_get(void);
+void ca_client_init_sync(void);
+void ca_init_connection_sync(void);
+void ca_update_daemon_state(void);
+bool ca_send_xpc_message(xpc_object_t msg, uint8_t priority, bool log_payload, bool retry);
+bool ca_send_xpc_message_sync(xpc_object_t msg, uint8_t priority, bool log_payload, bool retry);
+void ca_retry_helper(xpc_object_t msg, uint8_t priority, bool retry, uint8_t attempt,
+    uint64_t delay_ms);
+void ca_acquire_send_transaction(void);
+void ca_release_send_transaction(void);
+void ca_send_checkin_sync(void);
+void ca_handle_server_message_sync(xpc_object_t msg);
+void ca_handle_sink_message_emit_sync(xpc_object_t msg);
+void ca_handle_configuration_change_sync(xpc_object_t msg);
+void ca_cancel_connection_sync(void);
+void ca_send_exit_barrier_with_timeout_sync(unsigned ms);
+
 /* --- observers (client.m <-> observers.mm) ------------------------------ */
 
 struct ca_config;

@@ -262,8 +262,8 @@ describe(xpc_object_t o)
 	return strdup("null");
 }
 
-static void
-acquire_send_transaction(void)
+void
+ca_acquire_send_transaction(void)
 {
 	dispatch_sync(C.queue, ^{
 		if (C.active_sends == 0)
@@ -272,8 +272,8 @@ acquire_send_transaction(void)
 	});
 }
 
-static void
-release_send_transaction(void)
+void
+ca_release_send_transaction(void)
 {
 	dispatch_sync(C.queue, ^{
 		if (--C.active_sends <= 0) {
@@ -292,8 +292,8 @@ qos_block(uint8_t priority, dispatch_block_t body)
 
 /* --- sending ------------------------------------------------------------ */
 
-static void
-retry_helper(xpc_object_t msg, uint8_t priority, bool retry, uint8_t attempt,
+void
+ca_retry_helper(xpc_object_t msg, uint8_t priority, bool retry, uint8_t attempt,
     uint64_t delay_ms)
 {
 	if (attempt >= CA_MAX_ATTEMPTS) {
@@ -302,7 +302,7 @@ retry_helper(xpc_object_t msg, uint8_t priority, bool retry, uint8_t attempt,
 			os_log_error(ca_log_client, "Used all retries. Discarding message: %s.", d);
 			free(d);
 		}
-		release_send_transaction();
+		ca_release_send_transaction();
 		dispatch_semaphore_signal(C.in_flight);
 		return;
 	}
@@ -332,11 +332,11 @@ retry_helper(xpc_object_t msg, uint8_t priority, bool retry, uint8_t attempt,
 					os_log(ca_log_client, "Retrying message: %s", d);
 					free(d);
 				}
-				retry_helper(msg, priority, retry, attempt + 1, delay_ms * 2);
+				ca_retry_helper(msg, priority, retry, attempt + 1, delay_ms * 2);
 			}));
 			return;
 		}
-		release_send_transaction();
+		ca_release_send_transaction();
 		dispatch_semaphore_signal(C.in_flight);
 	});
 }
@@ -352,8 +352,8 @@ log_event(os_log_t log, xpc_object_t msg)
 }
 
 /* Client::sendXpcMessage_sync; runs on C.queue. */
-static bool
-send_xpc_message_sync(xpc_object_t msg, uint8_t priority, bool log_payload, bool retry)
+bool
+ca_send_xpc_message_sync(xpc_object_t msg, uint8_t priority, bool log_payload, bool retry)
 {
 	if (!conn_ok(C.conn))
 		return false;
@@ -365,25 +365,25 @@ send_xpc_message_sync(xpc_object_t msg, uint8_t priority, bool log_payload, bool
 				log_event(ca_log_send_diag, msg);
 		}
 		dispatch_semaphore_wait(C.in_flight, DISPATCH_TIME_FOREVER);
-		acquire_send_transaction();
-		retry_helper(msg, priority, retry, 0, CA_FIRST_RETRY_MS);
+		ca_acquire_send_transaction();
+		ca_retry_helper(msg, priority, retry, 0, CA_FIRST_RETRY_MS);
 	});
 	dispatch_async(C.send_queue, b);
 	return true;
 }
 
-static bool
-send_xpc_message(xpc_object_t msg, uint8_t priority, bool log_payload, bool retry)
+bool
+ca_send_xpc_message(xpc_object_t msg, uint8_t priority, bool log_payload, bool retry)
 {
 	__block bool ok;
 	dispatch_sync(C.queue, ^{
-		ok = send_xpc_message_sync(msg, priority, log_payload, retry);
+		ok = ca_send_xpc_message_sync(msg, priority, log_payload, retry);
 	});
 	return ok;
 }
 
-static void
-send_checkin_sync(void)
+void
+ca_send_checkin_sync(void)
 {
 	if (!conn_ok(C.conn) || C.checked_in)
 		return;
@@ -394,11 +394,11 @@ send_checkin_sync(void)
 	xpc_dictionary_set_string(msg, "command", "checkin");
 	xpc_dictionary_set_string(msg, "process", getprogname());
 	xpc_dictionary_set_int64(msg, "priority", CA_PRIORITY_DEFAULT);
-	send_xpc_message_sync(msg, CA_PRIORITY_DEFAULT, false, true);
+	ca_send_xpc_message_sync(msg, CA_PRIORITY_DEFAULT, false, true);
 }
 
-static void
-update_daemon_state(void)
+void
+ca_update_daemon_state(void)
 {
 	uint64_t state = 0;
 	notify_get_state(C.notify_token, &state);
@@ -414,8 +414,8 @@ update_daemon_state(void)
 
 /* --- server messages ---------------------------------------------------- */
 
-static void
-handle_configuration_change_sync(xpc_object_t msg)
+void
+ca_handle_configuration_change_sync(xpc_object_t msg)
 {
 	xpc_object_t cfg = xpc_dictionary_get_value(msg, "configuration");
 	if (cfg == nil || xpc_get_type(cfg) == XPC_TYPE_NULL) {
@@ -450,8 +450,8 @@ handle_configuration_change_sync(xpc_object_t msg)
 	config_release(old);
 }
 
-static void
-handle_sink_message_emit_sync(xpc_object_t msg)
+void
+ca_handle_sink_message_emit_sync(xpc_object_t msg)
 {
 	const char *text = xpc_dictionary_get_string(msg, "message");
 	if (text == NULL) {
@@ -468,15 +468,15 @@ handle_sink_message_emit_sync(xpc_object_t msg)
 			[o notifyMessageEmitted:message];
 }
 
-static void
-handle_server_message_sync(xpc_object_t msg)
+void
+ca_handle_server_message_sync(xpc_object_t msg)
 {
 	const char *n = xpc_dictionary_get_string(msg, "notification");
 
 	if (n != NULL && strcmp(n, "configuration-change") == 0)
-		handle_configuration_change_sync(msg);
+		ca_handle_configuration_change_sync(msg);
 	else if (n != NULL && strcmp(n, "message-emit") == 0)
-		handle_sink_message_emit_sync(msg);
+		ca_handle_sink_message_emit_sync(msg);
 	else if (os_log_type_enabled(ca_log_client, OS_LOG_TYPE_ERROR)) {
 		char *d = describe(msg);
 		os_log_error(ca_log_client, "#Error: Received unknown event from daemon: %s", d);
@@ -498,12 +498,12 @@ handle_connection_event_sync(xpc_object_t ev)
 		if (C.error_handler != nil)
 			C.error_handler(xpc_dictionary_get_string(ev, XPC_ERROR_KEY_DESCRIPTION));
 	} else if (xpc_get_type(ev) == XPC_TYPE_DICTIONARY) {
-		handle_server_message_sync(ev);
+		ca_handle_server_message_sync(ev);
 	}
 }
 
-static void
-init_connection_sync(void)
+void
+ca_init_connection_sync(void)
 {
 	xpc_connection_t conn = xpc_connection_create_mach_service(CA_SERVICE, C.reply_queue,
 	    XPC_CONNECTION_MACH_SERVICE_PRIVILEGED);
@@ -520,8 +520,8 @@ init_connection_sync(void)
 
 /* --- exit --------------------------------------------------------------- */
 
-static void
-cancel_connection_sync(void)
+void
+ca_cancel_connection_sync(void)
 {
 	if (!conn_ok(C.conn) || C.exiting)
 		return;
@@ -531,8 +531,8 @@ cancel_connection_sync(void)
 	xpc_connection_cancel(C.conn);
 }
 
-static void
-send_exit_barrier_with_timeout_sync(unsigned ms)
+void
+ca_send_exit_barrier_with_timeout_sync(unsigned ms)
 {
 	dispatch_group_t g = dispatch_group_create();
 	dispatch_group_enter(g);
@@ -554,7 +554,7 @@ send_exit_barrier_with_timeout_sync(unsigned ms)
 	});
 	dispatch_group_wait(g, dispatch_time(DISPATCH_TIME_NOW, (int64_t)ms * NSEC_PER_MSEC));
 	dispatch_sync(C.queue, ^{
-		cancel_connection_sync();
+		ca_cancel_connection_sync();
 	});
 }
 
@@ -565,15 +565,15 @@ at_exit_handler(void)
 		return;
 	os_transaction_t t = os_transaction_create("com.apple.CoreAnalytics.exit-transaction");
 	os_log(ca_log_client, "Entering exit handler.");
-	send_exit_barrier_with_timeout_sync(CA_EXIT_TIMEOUT_MS);
+	ca_send_exit_barrier_with_timeout_sync(CA_EXIT_TIMEOUT_MS);
 	os_log(ca_log_client, "Exiting exit handler.");
 	(void)t;
 }
 
 /* --- lifetime ----------------------------------------------------------- */
 
-static void
-client_init_sync(void)
+void
+ca_client_init_sync(void)
 {
 	static dispatch_queue_t exit_queue;
 	static dispatch_source_t sigterm;
@@ -587,18 +587,18 @@ client_init_sync(void)
 	});
 	dispatch_activate(sigterm);
 
-	init_connection_sync();
+	ca_init_connection_sync();
 	notify_register_dispatch(CA_RUNNING_NOTIFICATION, &C.notify_token, C.queue, ^(int token) {
 		(void)token;
-		update_daemon_state();
+		ca_update_daemon_state();
 		if (C.daemon_running)
-			send_checkin_sync();
+			ca_send_checkin_sync();
 	});
-	update_daemon_state();
+	ca_update_daemon_state();
 }
 
-static void
-client_get(void)
+void
+ca_client_get(void)
 {
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
@@ -612,7 +612,7 @@ client_get(void)
 		C.config_observers = [NSPointerArray weakObjectsPointerArray];
 		C.event_observers = [NSPointerArray weakObjectsPointerArray];
 		dispatch_sync(C.queue, ^{
-			client_init_sync();
+			ca_client_init_sync();
 		});
 	});
 }
@@ -622,7 +622,7 @@ client_get(void)
 bool
 ca_client_is_event_used(const char *name, size_t len)
 {
-	client_get();
+	ca_client_get();
 	struct ca_config *c = config_load();
 	bool used = c == NULL || C.allow_all || config_has_event(c, name, len);
 	config_release(c);
@@ -633,7 +633,7 @@ bool
 ca_client_send_event(const char *name, bool (^render)(ca_buf *out),
     uint8_t priority, uint8_t format, bool log_payload)
 {
-	client_get();
+	ca_client_get();
 	if (!conn_ok(C.conn))
 		return false;
 
@@ -655,13 +655,13 @@ ca_client_send_event(const char *name, bool (^render)(ca_buf *out),
 	xpc_dictionary_set_string(msg, "json", json);
 	xpc_dictionary_set_int64(msg, "format", format);
 	ca_buf_free(&b);
-	return send_xpc_message(msg, priority, log_payload, true);
+	return ca_send_xpc_message(msg, priority, log_payload, true);
 }
 
 xpc_object_t
 ca_client_mgmt(const char *command, xpc_object_t args)
 {
-	client_get();
+	ca_client_get();
 	xpc_object_t msg = (args != nil && xpc_get_type(args) == XPC_TYPE_DICTIONARY) ?
 	    args : xpc_dictionary_create_empty();
 
@@ -685,34 +685,47 @@ ca_client_mgmt(const char *command, xpc_object_t args)
 	return reply;
 }
 
+bool
+ca_xpc_bool(xpc_object_t v)
+{
+	xpc_type_t t = v != nil ? xpc_get_type(v) : NULL;
+	if (t == XPC_TYPE_BOOL)
+		return xpc_bool_get_value(v);
+	if (t == XPC_TYPE_INT64)
+		return xpc_int64_get_value(v) != 0;
+	if (t == XPC_TYPE_UINT64)
+		return xpc_uint64_get_value(v) != 0;
+	return false;
+}
+
 void
 ca_client_register_event_observer(id<CAEventObserverImpl> impl)
 {
-	client_get();
+	ca_client_get();
 	dispatch_sync(C.queue, ^{
 		[C.event_observers addPointer:(__bridge void *)impl];
-		send_checkin_sync();
+		ca_send_checkin_sync();
 	});
 }
 
 void
 ca_client_register_configuration_observer(id<CAConfigurationObserverImpl> impl)
 {
-	client_get();
+	ca_client_get();
 	dispatch_sync(C.queue, ^{
 		[C.config_observers addPointer:(__bridge void *)impl];
 		struct ca_config *c = config_load();
 		if (c != NULL)
 			[impl notifyConfigurationActivated:c];
 		config_release(c);
-		send_checkin_sync();
+		ca_send_checkin_sync();
 	});
 }
 
 void
 ca_client_register_error_handler(void (^handler)(const char *))
 {
-	client_get();
+	ca_client_get();
 	dispatch_sync(C.queue, ^{
 		C.error_handler = handler;
 	});
@@ -731,6 +744,6 @@ ca_client_has_config(void)
 void
 ca_client_allow_all_events(void)
 {
-	client_get();
+	ca_client_get();
 	C.allow_all = true;
 }
