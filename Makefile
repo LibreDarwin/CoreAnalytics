@@ -31,14 +31,16 @@ MFLAGS := $(OPT) -fobjc-arc -fblocks -isysroot "$(SDK)" -mmacosx-version-min=13.
 
 # The framework is universal.  arm64e is what system processes run (their
 # C++ virtual calls are pointer-authenticated, which is why the C++ types
-# mangle like Apple's); arm64 serves everything else.  clang builds every
-# slice at once; swiftc is run per slice.
-ARCHS    := arm64 arm64e
-ARCHFLAGS := -arch arm64 -arch arm64e
+# mangle like Apple's); arm64 serves other Apple silicon processes and
+# x86_64 Intel Macs and Rosetta.  clang builds every slice at once; swiftc
+# is run per slice.
+ARCHS    := arm64 arm64e x86_64
+ARCHFLAGS := -arch arm64 -arch arm64e -arch x86_64
 FWFLAGS  := $(MFLAGS) $(ARCHFLAGS)
 
 # Test programs are built for one slice, TEST_ARCH; `make test` runs the
-# parity tests for each.
+# parity tests for each (x86_64 under Rosetta; arm64e needs the
+# -arm64e_preview_abi boot-arg, as any non-Apple arm64e code does).
 TEST_ARCH ?= arm64
 TEST_DIR  := $(BUILD_DIR)/test-$(TEST_ARCH)
 
@@ -96,8 +98,10 @@ SWIFT_DEPS := $(FW_SRC)/QueryValues.swift $(FW_SRC)/CoreAnalytics.modulemap \
 SWIFT_BUILD := $(SWIFTC) -sdk "$(SDK)" $(SWIFTOPT) -parse-as-library -module-name CoreAnalytics \
 	-import-underlying-module -Xcc -fmodule-map-file=$(FW_SRC)/CoreAnalytics.modulemap -Xcc -Iinclude
 
-$(OBJDIR)/QueryValues.o: $(OBJDIR)/QueryValues-arm64.o $(OBJDIR)/QueryValues-arm64e.o
-	lipo -create -output $@ $(OBJDIR)/QueryValues-arm64.o $(OBJDIR)/QueryValues-arm64e.o
+SWIFT_OBJS := $(OBJDIR)/QueryValues-arm64.o $(OBJDIR)/QueryValues-arm64e.o $(OBJDIR)/QueryValues-x86_64.o
+
+$(OBJDIR)/QueryValues.o: $(SWIFT_OBJS)
+	lipo -create -output $@ $(SWIFT_OBJS)
 
 $(OBJDIR)/QueryValues-arm64.o: $(SWIFT_DEPS)
 	@mkdir -p $(OBJDIR)
@@ -106,6 +110,10 @@ $(OBJDIR)/QueryValues-arm64.o: $(SWIFT_DEPS)
 $(OBJDIR)/QueryValues-arm64e.o: $(SWIFT_DEPS)
 	@mkdir -p $(OBJDIR)
 	$(SWIFT_BUILD) -target arm64e-apple-macos13.0 -c -o $@ $(FW_SRC)/QueryValues.swift
+
+$(OBJDIR)/QueryValues-x86_64.o: $(SWIFT_DEPS)
+	@mkdir -p $(OBJDIR)
+	$(SWIFT_BUILD) -target x86_64-apple-macos13.0 -c -o $@ $(FW_SRC)/QueryValues.swift
 
 # The JSON writer is internal, so its check links json.o directly.
 JSON_CHECK := $(BUILD_DIR)/json_check
@@ -153,6 +161,7 @@ exports-check: all
 test: json-check exports-check
 	$(MAKE) CONFIG=$(CONFIG) TEST_ARCH=arm64 payload-parity cxx-parity
 	$(MAKE) CONFIG=$(CONFIG) TEST_ARCH=arm64e payload-parity cxx-parity
+	$(MAKE) CONFIG=$(CONFIG) TEST_ARCH=x86_64 payload-parity cxx-parity
 
 clean:
 	rm -rf build

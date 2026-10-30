@@ -40,6 +40,14 @@ public:
 	virtual ~ConfigurationObserver();
 	virtual void notifyConfigurationActivated(const FrameworkConfiguration &) = 0;
 };
+/* applesauce::xpc arguments: a pointer to one xpc_object_t; results come
+ * back through the result pointer into an object that releases it. */
+struct xpc_result {
+	xpc_object_t o;
+	~xpc_result() { if (o) xpc_release(o); }
+};
+#define SYM(s) __asm__("_" s)
+
 struct SendEventOptions {
 	uint8_t priority, format;
 	bool logPayload;
@@ -54,27 +62,19 @@ public:
 	void registerConfigurationObserver(std::weak_ptr<ConfigurationObserver>);
 	void registerErrorHandler(std::function<void(const std::string &)> &&);
 	void sendExitBarrierWithTimeoutSync(unsigned);
+	bool sendXpcMessage(xpc_object_t *, uint8_t, bool, bool)
+	    SYM("_ZN13CoreAnalytics6Client14sendXpcMessageERKN10applesauce3xpc4dictE18XPCMessagePrioritybb");
+	void handleSinkMessageEmit_sync(xpc_object_t *)
+	    SYM("_ZN13CoreAnalytics6Client26handleSinkMessageEmit_syncERKN10applesauce3xpc4dictE");
+	void handleServerMessage_sync(xpc_object_t *)
+	    SYM("_ZN13CoreAnalytics6Client24handleServerMessage_syncERKN10applesauce3xpc4dictE");
+	void handleConfigurationChange_sync(xpc_object_t *)
+	    SYM("_ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE");
+	xpc_result sendManagementCommandWithReply(std::string, xpc_object_t *) const
+	    SYM("_ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE");
 };
 }
 using namespace CoreAnalytics;
-
-/* applesauce::xpc arguments: a pointer to one xpc_object_t; results come
- * back through x8 into an object that releases it. */
-struct xpc_result {
-	xpc_object_t o;
-	~xpc_result() { if (o) xpc_release(o); }
-};
-#define SYM(s) __asm__("_" s)
-bool send_xpc(Client *, xpc_object_t *, uint8_t, bool, bool)
-    SYM("_ZN13CoreAnalytics6Client14sendXpcMessageERKN10applesauce3xpc4dictE18XPCMessagePrioritybb");
-void sink_emit(Client *, xpc_object_t *)
-    SYM("_ZN13CoreAnalytics6Client26handleSinkMessageEmit_syncERKN10applesauce3xpc4dictE");
-void server_message(Client *, xpc_object_t *)
-    SYM("_ZN13CoreAnalytics6Client24handleServerMessage_syncERKN10applesauce3xpc4dictE");
-void config_change(Client *, xpc_object_t *)
-    SYM("_ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE");
-xpc_result mgmt(const Client *, std::string, xpc_object_t *)
-    SYM("_ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE");
 
 bool analytics_tool_has_config();
 std::string analytics_tool_log_dump(ostr);
@@ -239,11 +239,11 @@ client()
 	xpc_object_t d = xpc_dictionary_create_empty();
 	xpc_dictionary_set_string(d, "command", "test-msg");
 	xpc_dictionary_set_int64(d, "k", 9);
-	printf("sendXpcMessage -> %d\n", send_xpc(&c, &d, 0, false, false));
+	printf("sendXpcMessage -> %d\n", c.sendXpcMessage(&d, 0, false, false));
 
 	xpc_object_t args = xpc_dictionary_create_empty();
 	xpc_dictionary_set_string(args, "name", "x");
-	xpc_result r = mgmt(&c, "config-info", &args);
+	xpc_result r = c.sendManagementCommandWithReply("config-info", &args);
 	printf("sendManagementCommandWithReply -> %s count=%zu, args command=%s\n",
 	    xpc_type_get_name(xpc_get_type(r.o)),
 	    xpc_get_type(r.o) == XPC_TYPE_DICTIONARY ? xpc_dictionary_get_count(r.o) : 0,
@@ -259,10 +259,10 @@ client()
 	xpc_dictionary_set_string(m, "notification", "message-emit");
 	xpc_dictionary_set_string(m, "message",
 	    "{\"x\":1,\"neg\":-2,\"y\":[true,1.5,\"s\",null],\"big\":18446744073709551615,\"o\":{}}");
-	sink_emit(&c, &m);
-	server_message(&c, &m);
+	c.handleSinkMessageEmit_sync(&m);
+	c.handleServerMessage_sync(&m);
 	xpc_dictionary_set_string(m, "message", "[1,2]");	/* not an object: ignored */
-	sink_emit(&c, &m);
+	c.handleSinkMessageEmit_sync(&m);
 	sleep(1);	/* let the sends reach the fake daemon */
 	return 0;
 }
@@ -299,7 +299,7 @@ config()
 	xpc_dictionary_set_string(m, "notification", "configuration-change");
 	xpc_dictionary_set_value(m, "configuration", xpc_shmem_create(blob, 4096));
 	xpc_dictionary_set_uint64(m, "configuration-size", 4096);
-	config_change(&c, &m);
+	c.handleConfigurationChange_sync(&m);
 	printf("after: hasConfig=%d used(used)=%d used(other)=%d\n", c.hasConfig(),
 	    c.isEventUsed("com.test.used"), c.isEventUsed("com.test.other"));
 
@@ -307,7 +307,7 @@ config()
 	b->tag = "B";
 	c.registerConfigurationObserver(b);	/* notified at once */
 	a.reset();
-	config_change(&c, &m);
+	c.handleConfigurationChange_sync(&m);
 	return 0;
 }
 

@@ -7,7 +7,9 @@
  * Arguments of Apple's applesauce::xpc::object and ::dict types are one
  * retained xpc_object_t; whether passed by value or by reference they
  * arrive as a pointer to it, so those functions take `const xpc_object_t *`
- * and are bound to Apple's symbol names with asm labels.
+ * and are bound to Apple's symbol names with asm labels.  Methods stay
+ * members so `this` and any result pointer are passed as for Apple's on
+ * every architecture.
  *
  * Copyright (C) 2026, LibreDarwin
  * SPDX-License-Identifier: BSD-3-Clause
@@ -125,6 +127,15 @@ public:
 	virtual void notifyConfigurationActivated(const FrameworkConfiguration &config) = 0;
 };
 
+/* Returned like applesauce::xpc::object: through the result pointer,
+ * owning one reference.  The user-provided destructor keeps it out of
+ * registers, where ARC would otherwise let clang pass a struct whose only
+ * member is a strong pointer. */
+struct xpc_result {
+	xpc_object_t object;
+	~xpc_result() {}
+};
+
 /* Passed in one register: bytes 0-2 of the argument. */
 struct SendEventOptions {
 	uint8_t priority;
@@ -153,6 +164,25 @@ public:
 	void releaseSendTransaction();
 	void cancelConnection_sync();
 	void sendExitBarrierWithTimeoutSync(unsigned timeout_ms);
+
+	/* Taking applesauce types. */
+	bool sendXpcMessage(const xpc_object_t *msg, uint8_t priority, bool log_payload, bool retry)
+	    CA_SYMBOL("_ZN13CoreAnalytics6Client14sendXpcMessageERKN10applesauce3xpc4dictE18XPCMessagePrioritybb");
+	bool sendXpcMessage_sync(const xpc_object_t *msg, uint8_t priority, bool log_payload, bool retry)
+	    CA_SYMBOL("_ZN13CoreAnalytics6Client19sendXpcMessage_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybb");
+	void retryXpcMessage_sync(const xpc_object_t *msg, uint8_t priority, bool retry)
+	    CA_SYMBOL("_ZN13CoreAnalytics6Client20retryXpcMessage_syncERKN10applesauce3xpc4dictE18XPCMessagePriorityb");
+	void retryXpcMessageHelper_sync(const xpc_object_t *msg, uint8_t priority, bool retry,
+	    uint8_t attempt, uint64_t delay_ms)
+	    CA_SYMBOL("_ZN13CoreAnalytics6Client26retryXpcMessageHelper_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybhy");
+	void handleServerMessage_sync(const xpc_object_t *msg)
+	    CA_SYMBOL("_ZN13CoreAnalytics6Client24handleServerMessage_syncERKN10applesauce3xpc4dictE");
+	void handleSinkMessageEmit_sync(const xpc_object_t *msg)
+	    CA_SYMBOL("_ZN13CoreAnalytics6Client26handleSinkMessageEmit_syncERKN10applesauce3xpc4dictE");
+	void handleConfigurationChange_sync(const xpc_object_t *msg)
+	    CA_SYMBOL("_ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE");
+	xpc_result sendManagementCommandWithReply(std::string command, const xpc_object_t *args) const
+	    CA_SYMBOL("_ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE");
 };
 }	/* namespace CoreAnalytics */
 
@@ -274,65 +304,37 @@ Client::registerConfigurationObserver(std::weak_ptr<ConfigurationObserver> obser
 	ca_client_register_configuration_observer(a);
 }
 
-/* Methods taking applesauce types.  `self` is unused: there is one client. */
-
-bool cxx_sendXpcMessage(Client *, const xpc_object_t *, uint8_t, bool, bool)
-    CA_SYMBOL("_ZN13CoreAnalytics6Client14sendXpcMessageERKN10applesauce3xpc4dictE18XPCMessagePrioritybb");
 bool
-cxx_sendXpcMessage(Client *, const xpc_object_t *msg, uint8_t priority, bool log_payload, bool retry)
+Client::sendXpcMessage(const xpc_object_t *msg, uint8_t priority, bool log_payload, bool retry)
 {
 	return ca_send_xpc_message(*msg, priority, log_payload, retry);
 }
 
-bool cxx_sendXpcMessage_sync(Client *, const xpc_object_t *, uint8_t, bool, bool)
-    CA_SYMBOL("_ZN13CoreAnalytics6Client19sendXpcMessage_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybb");
 bool
-cxx_sendXpcMessage_sync(Client *, const xpc_object_t *msg, uint8_t priority, bool log_payload, bool retry)
+Client::sendXpcMessage_sync(const xpc_object_t *msg, uint8_t priority, bool log_payload, bool retry)
 {
 	return ca_send_xpc_message_sync(*msg, priority, log_payload, retry);
 }
 
-void cxx_retryXpcMessage_sync(Client *, const xpc_object_t *, uint8_t, bool)
-    CA_SYMBOL("_ZN13CoreAnalytics6Client20retryXpcMessage_syncERKN10applesauce3xpc4dictE18XPCMessagePriorityb");
 void
-cxx_retryXpcMessage_sync(Client *, const xpc_object_t *msg, uint8_t priority, bool retry)
+Client::retryXpcMessage_sync(const xpc_object_t *msg, uint8_t priority, bool retry)
 {
 	ca_retry_helper(*msg, priority, retry, 0, 100);
 }
 
-void cxx_retryXpcMessageHelper_sync(Client *, const xpc_object_t *, uint8_t, bool, uint8_t, uint64_t)
-    CA_SYMBOL("_ZN13CoreAnalytics6Client26retryXpcMessageHelper_syncEN10applesauce3xpc4dictE18XPCMessagePrioritybhy");
 void
-cxx_retryXpcMessageHelper_sync(Client *, const xpc_object_t *msg, uint8_t priority, bool retry,
+Client::retryXpcMessageHelper_sync(const xpc_object_t *msg, uint8_t priority, bool retry,
     uint8_t attempt, uint64_t delay_ms)
 {
 	ca_retry_helper(*msg, priority, retry, attempt, delay_ms);
 }
 
-void cxx_handleServerMessage_sync(Client *, const xpc_object_t *)
-    CA_SYMBOL("_ZN13CoreAnalytics6Client24handleServerMessage_syncERKN10applesauce3xpc4dictE");
-void cxx_handleServerMessage_sync(Client *, const xpc_object_t *msg) { ca_handle_server_message_sync(*msg); }
+void Client::handleServerMessage_sync(const xpc_object_t *msg) { ca_handle_server_message_sync(*msg); }
+void Client::handleSinkMessageEmit_sync(const xpc_object_t *msg) { ca_handle_sink_message_emit_sync(*msg); }
+void Client::handleConfigurationChange_sync(const xpc_object_t *msg) { ca_handle_configuration_change_sync(*msg); }
 
-void cxx_handleSinkMessageEmit_sync(Client *, const xpc_object_t *)
-    CA_SYMBOL("_ZN13CoreAnalytics6Client26handleSinkMessageEmit_syncERKN10applesauce3xpc4dictE");
-void cxx_handleSinkMessageEmit_sync(Client *, const xpc_object_t *msg) { ca_handle_sink_message_emit_sync(*msg); }
-
-void cxx_handleConfigurationChange_sync(Client *, const xpc_object_t *)
-    CA_SYMBOL("_ZN13CoreAnalytics6Client30handleConfigurationChange_syncERKN10applesauce3xpc4dictE");
-void cxx_handleConfigurationChange_sync(Client *, const xpc_object_t *msg) { ca_handle_configuration_change_sync(*msg); }
-
-/* Returned like applesauce::xpc::object: through x8, owning one reference.
- * The user-provided destructor keeps it out of registers, where ARC would
- * otherwise let clang pass a struct whose only member is a strong pointer. */
-struct xpc_result {
-	xpc_object_t object;
-	~xpc_result() {}
-};
-
-xpc_result cxx_sendManagementCommandWithReply(const Client *, std::string, const xpc_object_t *)
-    CA_SYMBOL("_ZNK13CoreAnalytics6Client30sendManagementCommandWithReplyENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEN10applesauce3xpc4dictE");
 xpc_result
-cxx_sendManagementCommandWithReply(const Client *, std::string command, const xpc_object_t *args)
+Client::sendManagementCommandWithReply(std::string command, const xpc_object_t *args) const
 {
 	return { ca_client_mgmt(command.c_str(), *args) };
 }
