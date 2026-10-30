@@ -4,7 +4,8 @@
 #
 #   make                 # build CoreAnalytics.framework for CONFIG (default release)
 #   make CONFIG=debug    # debug build
-#   make test            # JSON checks, export parity, payload and C++ parity with Apple's
+#   make test            # JSON checks, export parity, payload and C++ parity with Apple's,
+#                        # the parity tests once per architecture slice
 #   make clean
 #
 # The framework keeps Apple's install name, so a binary linked against it
@@ -26,7 +27,20 @@ BUILD_DIR := build/$(CONFIG)
 OBJDIR    := $(BUILD_DIR)/obj
 
 FW_SRC := src/CoreAnalytics
-MFLAGS := $(OPT) -fobjc-arc -fblocks -isysroot "$(SDK)" -Wall -Wextra -Iinclude -I$(FW_SRC)
+MFLAGS := $(OPT) -fobjc-arc -fblocks -isysroot "$(SDK)" -mmacosx-version-min=13.0 -Wall -Wextra -Iinclude -I$(FW_SRC)
+
+# The framework is universal.  arm64e is what system processes run (their
+# C++ virtual calls are pointer-authenticated, which is why the C++ types
+# mangle like Apple's); arm64 serves everything else.  clang builds every
+# slice at once; swiftc is run per slice.
+ARCHS    := arm64 arm64e
+ARCHFLAGS := -arch arm64 -arch arm64e
+FWFLAGS  := $(MFLAGS) $(ARCHFLAGS)
+
+# Test programs are built for one slice, TEST_ARCH; `make test` runs the
+# parity tests for each.
+TEST_ARCH ?= arm64
+TEST_DIR  := $(BUILD_DIR)/test-$(TEST_ARCH)
 
 FRAMEWORK := $(BUILD_DIR)/CoreAnalytics.framework
 FW_VER    := $(FRAMEWORK)/Versions/A
@@ -40,7 +54,7 @@ all: $(FRAMEWORK)/CoreAnalytics
 
 $(FRAMEWORK)/CoreAnalytics: $(OBJS) $(FW_SRC)/CoreAnalytics.exp $(FW_SRC)/Info.plist
 	@mkdir -p $(FW_VER)/Headers $(FW_VER)/Resources
-	$(CC) $(MFLAGS) -dynamiclib -install_name $(INSTALL_NAME) \
+	$(CC) $(FWFLAGS) -dynamiclib -install_name $(INSTALL_NAME) \
 	    -compatibility_version 1 -current_version 1 \
 	    -exported_symbols_list $(FW_SRC)/CoreAnalytics.exp \
 	    -o $(FW_VER)/CoreAnalytics $(OBJS) -framework Foundation -framework CoreFoundation -lc++ \
@@ -54,35 +68,44 @@ $(FRAMEWORK)/CoreAnalytics: $(OBJS) $(FW_SRC)/CoreAnalytics.exp $(FW_SRC)/Info.p
 
 $(OBJDIR)/api.o: $(FW_SRC)/api.m $(HDRS)
 	@mkdir -p $(OBJDIR)
-	$(CC) $(MFLAGS) -c -o $@ $(FW_SRC)/api.m
+	$(CC) $(FWFLAGS) -c -o $@ $(FW_SRC)/api.m
 
 $(OBJDIR)/client.o: $(FW_SRC)/client.m $(HDRS)
 	@mkdir -p $(OBJDIR)
-	$(CC) $(MFLAGS) -c -o $@ $(FW_SRC)/client.m
+	$(CC) $(FWFLAGS) -c -o $@ $(FW_SRC)/client.m
 
 $(OBJDIR)/json.o: $(FW_SRC)/json.m $(HDRS)
 	@mkdir -p $(OBJDIR)
-	$(CC) $(MFLAGS) -c -o $@ $(FW_SRC)/json.m
+	$(CC) $(FWFLAGS) -c -o $@ $(FW_SRC)/json.m
 
 # Objective-C++ so a rejected subscription throws std::runtime_error.
 $(OBJDIR)/observers.o: $(FW_SRC)/observers.mm $(HDRS)
 	@mkdir -p $(OBJDIR)
-	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/observers.mm
+	$(CC) $(FWFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/observers.mm
 
 # The C++ interface; Objective-C++ so it can adapt C++ observers.
 $(OBJDIR)/client_cxx.o: $(FW_SRC)/client_cxx.mm $(HDRS)
 	@mkdir -p $(OBJDIR)
-	$(CC) $(MFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/client_cxx.mm
+	$(CC) $(FWFLAGS) -std=c++17 -c -o $@ $(FW_SRC)/client_cxx.mm
 
 # The Swift export.  Its module is named CoreAnalytics (the symbol's
 # mangling depends on it) and imports the framework's C header as its
 # underlying Clang module; the Swift runtime libraries are autolinked.
-$(OBJDIR)/QueryValues.o: $(FW_SRC)/QueryValues.swift $(FW_SRC)/CoreAnalytics.modulemap \
+SWIFT_DEPS := $(FW_SRC)/QueryValues.swift $(FW_SRC)/CoreAnalytics.modulemap \
 	include/CoreAnalytics/CoreAnalytics.h
+SWIFT_BUILD := $(SWIFTC) -sdk "$(SDK)" $(SWIFTOPT) -parse-as-library -module-name CoreAnalytics \
+	-import-underlying-module -Xcc -fmodule-map-file=$(FW_SRC)/CoreAnalytics.modulemap -Xcc -Iinclude
+
+$(OBJDIR)/QueryValues.o: $(OBJDIR)/QueryValues-arm64.o $(OBJDIR)/QueryValues-arm64e.o
+	lipo -create -output $@ $(OBJDIR)/QueryValues-arm64.o $(OBJDIR)/QueryValues-arm64e.o
+
+$(OBJDIR)/QueryValues-arm64.o: $(SWIFT_DEPS)
 	@mkdir -p $(OBJDIR)
-	$(SWIFTC) -sdk "$(SDK)" $(SWIFTOPT) -parse-as-library -module-name CoreAnalytics \
-	    -import-underlying-module -Xcc -fmodule-map-file=$(FW_SRC)/CoreAnalytics.modulemap \
-	    -Xcc -Iinclude -c -o $@ $(FW_SRC)/QueryValues.swift
+	$(SWIFT_BUILD) -target arm64-apple-macos13.0 -c -o $@ $(FW_SRC)/QueryValues.swift
+
+$(OBJDIR)/QueryValues-arm64e.o: $(SWIFT_DEPS)
+	@mkdir -p $(OBJDIR)
+	$(SWIFT_BUILD) -target arm64e-apple-macos13.0 -c -o $@ $(FW_SRC)/QueryValues.swift
 
 # The JSON writer is internal, so its check links json.o directly.
 JSON_CHECK := $(BUILD_DIR)/json_check
@@ -94,36 +117,42 @@ json-check: $(JSON_CHECK)
 	$(JSON_CHECK)
 
 # Event JSON must match Apple's byte for byte; see tests/payload-parity.sh.
-PAYLOAD_GEN := $(BUILD_DIR)/payload_gen
-CAPTURE_LIB := $(BUILD_DIR)/capture_send.dylib
+PAYLOAD_GEN := $(TEST_DIR)/payload_gen
+CAPTURE_LIB := $(TEST_DIR)/capture_send.dylib
 
 $(PAYLOAD_GEN): tests/payload_gen.m include/CoreAnalytics/CoreAnalytics.h $(FRAMEWORK)/CoreAnalytics
-	$(CC) $(MFLAGS) -F$(BUILD_DIR) -o $@ tests/payload_gen.m -framework CoreAnalytics -framework Foundation
+	@mkdir -p $(TEST_DIR)
+	$(CC) $(MFLAGS) -arch $(TEST_ARCH) -F$(BUILD_DIR) -o $@ tests/payload_gen.m -framework CoreAnalytics -framework Foundation
 
 $(CAPTURE_LIB): tests/capture_send.c
-	$(CC) $(OPT) -fblocks -isysroot "$(SDK)" -dynamiclib -o $@ tests/capture_send.c
+	@mkdir -p $(TEST_DIR)
+	$(CC) $(OPT) -arch $(TEST_ARCH) -fblocks -isysroot "$(SDK)" -dynamiclib -o $@ tests/capture_send.c
 
 payload-parity: $(PAYLOAD_GEN) $(CAPTURE_LIB)
 	GEN="$(PAYLOAD_GEN)" CAP="$(CAPTURE_LIB)" FWDIR="$(BUILD_DIR)" bash tests/payload-parity.sh
 
 # The C++ interface must behave like Apple's; see tests/cxx-parity.sh.
-CXX_DRIVER := $(BUILD_DIR)/cxx_driver
-FAKE_DAEMON := $(BUILD_DIR)/fake_daemon.dylib
+CXX_DRIVER := $(TEST_DIR)/cxx_driver
+FAKE_DAEMON := $(TEST_DIR)/fake_daemon.dylib
 
 $(CXX_DRIVER): tests/cxx_driver.cpp $(FW_SRC)/nlohmann_json.h $(FRAMEWORK)/CoreAnalytics
-	$(CC) $(OPT) -std=c++17 -isysroot "$(SDK)" -I$(FW_SRC) -F$(BUILD_DIR) -o $@ tests/cxx_driver.cpp -framework CoreAnalytics -lc++
+	@mkdir -p $(TEST_DIR)
+	$(CC) $(OPT) -arch $(TEST_ARCH) -std=c++17 -isysroot "$(SDK)" -I$(FW_SRC) -F$(BUILD_DIR) -o $@ tests/cxx_driver.cpp -framework CoreAnalytics -lc++
 
 $(FAKE_DAEMON): tests/fake_daemon.c
-	$(CC) $(OPT) -fblocks -isysroot "$(SDK)" -dynamiclib -o $@ tests/fake_daemon.c
+	@mkdir -p $(TEST_DIR)
+	$(CC) $(OPT) -arch $(TEST_ARCH) -fblocks -isysroot "$(SDK)" -dynamiclib -o $@ tests/fake_daemon.c
 
 cxx-parity: $(CXX_DRIVER) $(FAKE_DAEMON)
 	DRV="$(CXX_DRIVER)" FAKE="$(FAKE_DAEMON)" FWDIR="$(BUILD_DIR)" bash tests/cxx-parity.sh
 
-# Every exported symbol of our framework must be one of Apple's C exports.
+# Every slice must export exactly CoreAnalytics.exp, all of them Apple's.
 exports-check: all
-	FW="build/$(CONFIG)/CoreAnalytics.framework/CoreAnalytics" bash tests/exports.sh
+	FW="$(FRAMEWORK)/CoreAnalytics" ARCHS="$(ARCHS)" bash tests/exports.sh
 
-test: json-check exports-check payload-parity cxx-parity
+test: json-check exports-check
+	$(MAKE) CONFIG=$(CONFIG) TEST_ARCH=arm64 payload-parity cxx-parity
+	$(MAKE) CONFIG=$(CONFIG) TEST_ARCH=arm64e payload-parity cxx-parity
 
 clean:
 	rm -rf build

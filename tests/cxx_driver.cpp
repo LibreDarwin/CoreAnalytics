@@ -28,12 +28,12 @@ using nlohmann::json;
 using jt = json::value_t;
 typedef std::optional<std::string> ostr;
 
-namespace CoreAnalytics {
 class FrameworkConfiguration;
+namespace CoreAnalytics {
 class EventObserver {
 public:
 	virtual ~EventObserver();
-	virtual void notifyMessageEmitted(const json &) = 0;
+	virtual void notifyMessageEmitted(json) = 0;
 };
 class ConfigurationObserver {
 public:
@@ -202,7 +202,7 @@ show(const json &j)
 
 struct EventPrinter : EventObserver {
 	const char *tag;
-	void notifyMessageEmitted(const json &j) override
+	void notifyMessageEmitted(json j) override
 	{
 		printf("event observer %s: ", tag);
 		show(j);

@@ -104,13 +104,19 @@ json_from_ns(id obj)
 
 /* --- classes ------------------------------------------------------------ */
 
-namespace CoreAnalytics {
-class FrameworkConfiguration;	/* opaque: our struct ca_config */
+/*
+ * The observer methods' exact signatures matter beyond the vtable layout:
+ * on arm64e each virtual call is signed with a hash of the method's mangled
+ * name.  Apple's take the message by value and a FrameworkConfiguration
+ * from the global namespace (opaque here: it is our struct ca_config).
+ */
+class FrameworkConfiguration;
 
+namespace CoreAnalytics {
 class EventObserver {
 public:
 	virtual ~EventObserver();
-	virtual void notifyMessageEmitted(const json &message) = 0;
+	virtual void notifyMessageEmitted(json message) = 0;
 };
 
 class ConfigurationObserver {
@@ -168,8 +174,7 @@ ConfigurationObserver::~ConfigurationObserver() {}
 - (void)notifyMessageEmitted:(id)message
 {
 	if (std::shared_ptr<EventObserver> o = _observer.lock()) {
-		json j = json_from_ns(message);
-		o->notifyMessageEmitted(j);
+		o->notifyMessageEmitted(json_from_ns(message));
 	}
 }
 @end

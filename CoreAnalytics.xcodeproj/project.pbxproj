@@ -281,6 +281,8 @@
 		C80000010000000000000007 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "arm64 arm64e";
+				ONLY_ACTIVE_ARCH = NO;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -308,6 +310,8 @@
 		C80000010000000000000008 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "arm64 arm64e";
+				ONLY_ACTIVE_ARCH = NO;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
