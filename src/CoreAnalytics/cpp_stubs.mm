@@ -158,6 +158,157 @@ void __ZN13CoreAnalytics6Client29registerConfigurationObserverENSt3__18weak_ptrI
 
 #include <stdexcept>
 #include <string>
+static void append_tabs_ap(std::string &s, int depth) {
+    for (int i = 0; i < depth; i++) s.push_back('\t');
+}
+
+static void applesauce_fmt(xpc_object_t obj, std::string &out, int depth);
+
+static void applesauce_fmt_array(xpc_object_t arr, std::string &out, int depth) {
+    out.push_back('[');
+    size_t count = xpc_array_get_count(arr);
+    if (count == 0) {
+        out.push_back(']');
+        return;
+    }
+    out.push_back('\n');
+    for (size_t i = 0; i < count; i++) {
+        if (i > 0) {
+            out.push_back(',');
+            out.push_back('\n');
+        }
+        append_tabs_ap(out, depth + 1);
+        out += std::to_string(i);
+        out.append(": ");
+        applesauce_fmt(xpc_array_get_value(arr, i), out, depth + 1);
+    }
+    out.push_back('\n');
+    append_tabs_ap(out, depth);
+    out.push_back(']');
+}
+
+static void applesauce_fmt_dict(xpc_object_t dict, std::string &out, int depth) {
+    out.push_back('{');
+    size_t count = xpc_dictionary_get_count(dict);
+    if (count == 0) {
+        out.push_back('}');
+        return;
+    }
+    out.push_back('\n');
+    __block size_t idx = 0;
+    xpc_dictionary_apply(dict, ^bool(const char *key, xpc_object_t value) {
+        if (idx > 0) {
+            out.push_back(',');
+            out.push_back('\n');
+        }
+        append_tabs_ap(out, depth + 1);
+        out.push_back('"');
+        out.append(key);
+        out.push_back('"');
+        out.append(": ");
+        applesauce_fmt(value, out, depth + 1);
+        idx++;
+        return true;
+    });
+    out.push_back('\n');
+    append_tabs_ap(out, depth);
+    out.push_back('}');
+}
+
+static void applesauce_fmt(xpc_object_t obj, std::string &out, int depth) {
+    xpc_type_t type = xpc_get_type(obj);
+    if (type == XPC_TYPE_DICTIONARY) {
+        applesauce_fmt_dict(obj, out, depth);
+        return;
+    } else if (type == XPC_TYPE_ARRAY) {
+        applesauce_fmt_array(obj, out, depth);
+        return;
+    } else if (type == XPC_TYPE_STRING) {
+        out.push_back('"');
+        const char *s = xpc_string_get_string_ptr(obj);
+        size_t len = xpc_string_get_length(obj);
+        out.append(s, len);
+        out.push_back('"');
+        return;
+    } else if (type == XPC_TYPE_INT64) {
+        out += std::to_string(xpc_int64_get_value(obj));
+        return;
+    } else if (type == XPC_TYPE_UINT64) {
+        out += std::to_string(xpc_uint64_get_value(obj));
+        out.push_back('u');
+        return;
+    } else if (type == XPC_TYPE_BOOL) {
+        if (xpc_bool_get_value(obj)) {
+            out.append("true");
+        } else {
+            out.append("false");
+        }
+        return;
+    } else if (type == XPC_TYPE_DOUBLE) {
+        out += std::to_string(xpc_double_get_value(obj));
+        return;
+    } else if (type == XPC_TYPE_NULL) {
+        out.append("null");
+        return;
+    } else if (type == XPC_TYPE_DATE) {
+        int64_t nanoseconds = xpc_date_get_value(obj);
+        time_t seconds = nanoseconds / 1000000000LL;
+        struct tm tm;
+        gmtime_r(&seconds, &tm);
+        char buf[64];
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S GMT", &tm);
+        out.append(buf);
+        return;
+    } else if (type == XPC_TYPE_DATA) {
+        size_t len = xpc_data_get_length(obj);
+        const unsigned char *bytes = (const unsigned char *)xpc_data_get_bytes_ptr(obj);
+        char tmp[40];
+        snprintf(tmp, sizeof(tmp), "[%zu bytes]", len);
+        out.append(tmp);
+        if (len > 0 && bytes) {
+            for (size_t i = 0; i < len; i++) {
+                snprintf(tmp, sizeof(tmp), " %02x", bytes[i]);
+                out.append(tmp);
+            }
+        }
+        return;
+    } else if (type == XPC_TYPE_UUID) {
+        const uint8_t *bytes = xpc_uuid_get_bytes(obj);
+        if (bytes) {
+            uuid_t uuid;
+            memcpy(uuid, bytes, 16);
+            char uuid_str[37];
+            uuid_unparse(uuid, uuid_str);
+            out.append(uuid_str);
+        } else {
+            out.append("unknown");
+        }
+        return;
+    } else if (type == XPC_TYPE_ERROR) {
+        char *d = xpc_copy_description(obj);
+        if (d) {
+            if (strstr(d, "Connection invalid")) {
+                out = "XPC_ERROR(Connection invalid)";
+            } else {
+                out = d;
+            }
+            free(d);
+            return;
+        }
+        out.append("XPC_ERROR");
+        return;
+    } else {
+        char *d = xpc_copy_description(obj);
+        if (d) {
+            out = d;
+            free(d);
+            return;
+        }
+        out.append("unknown");
+        return;
+    }
+}
+
 std::string analytics_tool_config_list() {
     xpc_object_t r = ca_client_mgmt("config-list", nullptr);
     if (r == NULL || xpc_get_type(r) != XPC_TYPE_DICTIONARY) {
@@ -173,14 +324,7 @@ std::string analytics_tool_config_list() {
             return std::string(xpc_string_get_string_ptr(clv));
         return std::string("");
     }
-    char *e = NULL;
-    ca_buf b = {0};
-    if (ca_json_from_xpc(r, &b, &e)) {
-        std::string out(b.ptr ? b.ptr : "");
-        ca_buf_free(&b);
-        if (e) free(e);
-        return out;
-    }
-    if (e) free(e);
-    return "unknown";
+    std::string out;
+    applesauce_fmt(r, out, 0);
+    return out;
 }
